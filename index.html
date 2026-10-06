@@ -1,0 +1,3490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Button Challenge</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #090b18;
+            color: white;
+        }
+
+        #game {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .stat {
+            min-width: 90px;
+        }
+
+        .label {
+            font-size: 12px;
+            opacity: 0.6;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        #target {
+            position: absolute;
+            width: 85px;
+            height: 85px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            background: white;
+            box-shadow:
+                0 0 15px white,
+                0 0 40px #00eaff,
+                0 0 80px #00eaff;
+            transition:
+                left var(--move-duration, 0.12s) ease,
+                top var(--move-duration, 0.12s) ease,
+                width 0.15s ease,
+                height 0.15s ease,
+                transform 0.08s;
+        }
+
+        .difficulty-name {
+            margin-top: 2px;
+            color: #00eaff;
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .hit-effect {
+            position: absolute;
+            pointer-events: none;
+            font-size: 28px;
+            font-weight: bold;
+            animation: hitPop 0.5s ease-out forwards;
+            z-index: 15;
+        }
+
+        .hit-particle {
+            position: absolute;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #00eaff;
+            box-shadow: 0 0 8px #00eaff;
+            pointer-events: none;
+            animation: particleBurst 0.45s ease-out forwards;
+            z-index: 14;
+        }
+
+        @keyframes particleBurst {
+            to {
+                transform: translate(var(--particle-x), var(--particle-y)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        .level-up-effect {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            color: #00eaff;
+            font-size: clamp(25px, 6vw, 42px);
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 0 0 18px #00eaff;
+            white-space: nowrap;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            animation: levelUpPop 1.1s ease-out forwards;
+            z-index: 16;
+        }
+
+        .level-up-effect span {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.48em;
+            letter-spacing: 1px;
+        }
+
+        @keyframes levelUpPop {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.65);
+            }
+
+            20% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.12);
+            }
+
+            35% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            68% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -65%) scale(1);
+            }
+        }
+
+        #target.hit-animate {
+            animation: targetHit 0.18s ease-out;
+        }
+
+        @keyframes targetHit {
+            0% {
+                transform: scale(0.76);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes hitPop {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.8) translateY(-45px);
+                opacity: 0;
+            }
+        }
+
+        .combo {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: bold;
+            opacity: 0;
+            transition: 0.2s;
+            z-index: 12;
+        }
+
+        .combo.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1.15);
+        }
+
+        #target:active {
+            transform: scale(0.82);
+        }
+
+        #startScreen,
+        #tutorialScreen,
+        #gameSelectScreen,
+        #achievementsScreen,
+        #dailyChallengesScreen,
+        #difficultyScreen,
+        #dodgeDifficultyScreen,
+        #endScreen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background: rgba(9, 11, 24, 0.94);
+            z-index: 20;
+            text-align: center;
+        }
+
+        #tutorialScreen {
+            display: none;
+            overflow-y: auto;
+            padding: 20px 16px;
+        }
+
+        #difficultyScreen {
+            display: none;
+            overflow-y: auto;
+            padding: 24px 16px;
+        }
+
+        #gameSelectScreen,
+        #achievementsScreen,
+        #dailyChallengesScreen,
+        #dodgeDifficultyScreen,
+        #dodgeGameScreen,
+        #dodgeGameOverScreen {
+            display: none;
+        }
+
+        #dodgeGameOverScreen {
+            z-index: 25;
+        }
+
+        #endScreen {
+            display: none;
+        }
+
+        h1 {
+            font-size: clamp(40px, 8vw, 80px);
+            margin-bottom: 10px;
+        }
+
+        p {
+            opacity: 0.7;
+            margin-bottom: 25px;
+        }
+
+        .mainButton {
+            border: none;
+            padding: 15px 35px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            background: white;
+            color: #090b18;
+        }
+
+        .mainButton:hover {
+            transform: scale(1.05);
+        }
+
+        .sound-toggle {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            z-index: 50;
+            min-height: 42px;
+            padding: 8px 13px;
+            border: 1px solid rgba(0, 234, 255, 0.42);
+            border-radius: 10px;
+            background: rgba(9, 17, 35, 0.92);
+            color: #b8fbff;
+            font: inherit;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+            touch-action: manipulation;
+        }
+
+        body.dodge-game-active #soundToggle,
+        body.one-button-game-active #soundToggle,
+        body.game-select-active #soundToggle,
+        body.modal-screen-active #soundToggle {
+            display: none;
+        }
+
+        .hud-sound-toggle {
+            position: static;
+            width: 100%;
+            min-height: 38px;
+            padding: 5px 4px;
+            font-size: 10px;
+            letter-spacing: 0;
+            white-space: nowrap;
+        }
+
+        .sound-toggle:hover,
+        .sound-toggle:focus-visible {
+            border-color: #00eaff;
+            background: rgba(0, 234, 255, 0.14);
+            color: white;
+        }
+
+        .sound-toggle:focus-visible {
+            outline: 3px solid white;
+            outline-offset: 3px;
+        }
+
+        .sound-toggle.sound-off {
+            border-color: rgba(255, 255, 255, 0.28);
+            color: rgba(255, 255, 255, 0.72);
+        }
+
+        .game-select-sound {
+            position: static;
+            margin-top: 18px;
+        }
+
+        .achievement-launch-button {
+            display: block;
+            min-height: 46px;
+            margin: 16px auto 0;
+            padding: 10px 20px;
+            border: 1px solid rgba(0, 234, 255, 0.42);
+            border-radius: 10px;
+            background: rgba(0, 234, 255, 0.08);
+            color: #b8fbff;
+            font: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .achievement-launch-button:hover,
+        .achievement-launch-button:focus-visible {
+            border-color: #00eaff;
+            background: rgba(0, 234, 255, 0.16);
+            color: white;
+        }
+
+        .daily-launch-button {
+            margin-top: 9px;
+            border-color: rgba(187, 114, 255, 0.48);
+            background: rgba(187, 114, 255, 0.09);
+            color: #e5c7ff;
+        }
+
+        .daily-launch-button:hover,
+        .daily-launch-button:focus-visible {
+            border-color: #bb72ff;
+            background: rgba(187, 114, 255, 0.18);
+        }
+
+        .achievement-launch-button:focus-visible,
+        .achievement-back-button:focus-visible {
+            outline: 3px solid white;
+            outline-offset: 3px;
+        }
+
+        #achievementsScreen {
+            display: none;
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding: 20px 16px;
+        }
+
+        .achievements-panel {
+            width: min(1080px, 100%);
+            margin: 0 auto;
+            padding: clamp(18px, 3vw, 32px);
+            border: 1px solid rgba(0, 234, 255, 0.3);
+            border-radius: 22px;
+            background: rgba(12, 18, 39, 0.98);
+            box-shadow: 0 0 42px rgba(0, 234, 255, 0.14);
+        }
+
+        .achievements-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .achievements-header h2 {
+            color: #00eaff;
+            font-size: clamp(24px, 5vw, 38px);
+            letter-spacing: 1px;
+        }
+
+        .achievement-progress {
+            margin: 0;
+            color: #b8fbff;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .achievement-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .achievement-card {
+            min-width: 0;
+            padding: 14px;
+            border: 1px solid rgba(0, 234, 255, 0.22);
+            border-radius: 13px;
+            background: rgba(0, 234, 255, 0.055);
+            overflow-wrap: anywhere;
+        }
+
+        .achievement-card.locked {
+            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.025);
+            opacity: 0.62;
+        }
+
+        .achievement-card h3 {
+            margin-bottom: 6px;
+            color: #00eaff;
+            font-size: 14px;
+            letter-spacing: 0.35px;
+        }
+
+        .achievement-card.locked h3 {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .achievement-card p {
+            min-height: 36px;
+            margin: 0 0 8px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .achievement-status {
+            color: #65ffbd;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.7px;
+        }
+
+        .achievement-card.locked .achievement-status {
+            color: rgba(255, 255, 255, 0.58);
+        }
+
+        #dailyChallengesScreen {
+            display: none;
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding: 20px 16px;
+        }
+
+        .daily-challenges-panel {
+            width: min(760px, 100%);
+            margin: 0 auto;
+            padding: clamp(18px, 3vw, 32px);
+            border: 1px solid rgba(187, 114, 255, 0.36);
+            border-radius: 22px;
+            background: rgba(12, 18, 39, 0.98);
+            box-shadow: 0 0 42px rgba(187, 114, 255, 0.13);
+        }
+
+        .daily-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .daily-header h2 {
+            color: #d9b0ff;
+            font-size: clamp(24px, 5vw, 38px);
+            letter-spacing: 1px;
+        }
+
+        .daily-date {
+            margin: 6px 0 0;
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 13px;
+        }
+
+        .daily-stars {
+            margin: 0;
+            color: #ffe66d;
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .daily-challenge-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .daily-challenge-card {
+            min-width: 0;
+            padding: 15px;
+            border: 1px solid rgba(187, 114, 255, 0.22);
+            border-radius: 14px;
+            background: rgba(187, 114, 255, 0.05);
+        }
+
+        .daily-challenge-card.completed {
+            border-color: rgba(101, 255, 189, 0.55);
+            background: rgba(101, 255, 189, 0.08);
+        }
+
+        .daily-challenge-card h3 {
+            margin-bottom: 5px;
+            color: #e5c7ff;
+            font-size: 15px;
+            letter-spacing: 0.35px;
+        }
+
+        .daily-challenge-card.completed h3 {
+            color: #65ffbd;
+        }
+
+        .daily-challenge-card p {
+            margin: 0 0 10px;
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .daily-challenge-progress-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 7px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .daily-challenge-count {
+            color: #b8fbff;
+            white-space: nowrap;
+        }
+
+        .daily-challenge-card.completed .daily-challenge-count,
+        .daily-challenge-status {
+            color: #65ffbd;
+        }
+
+        .daily-challenge-status {
+            font-size: 10px;
+            letter-spacing: 0.7px;
+        }
+
+        .daily-progress-track {
+            height: 7px;
+            overflow: hidden;
+            border-radius: 99px;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .daily-progress-fill {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #bb72ff, #00eaff);
+            transition: width 0.2s ease;
+        }
+
+        .daily-challenge-card.completed .daily-progress-fill {
+            background: #65ffbd;
+        }
+
+        .daily-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .daily-completion-count {
+            margin: 0;
+            color: #b8fbff;
+            font-weight: bold;
+        }
+
+        .achievement-back-button {
+            display: inline-flex;
+            min-height: 46px;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 10px 22px;
+            border: 1px solid rgba(0, 234, 255, 0.42);
+            border-radius: 10px;
+            background: rgba(0, 234, 255, 0.08);
+            color: white;
+            font: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        #achievementNotification {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            z-index: 60;
+            width: min(420px, calc(100% - 24px));
+            padding: 13px 18px;
+            border: 1px solid rgba(0, 234, 255, 0.72);
+            border-radius: 14px;
+            background: rgba(9, 17, 35, 0.97);
+            box-shadow: 0 0 28px rgba(0, 234, 255, 0.24);
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(-50%, -12px) scale(0.96);
+            visibility: hidden;
+            transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.22s;
+        }
+
+        #achievementNotification.visible {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1);
+            visibility: visible;
+            transition-delay: 0s;
+        }
+
+        #achievementNotification.daily-notification {
+            border-color: rgba(187, 114, 255, 0.78);
+            box-shadow: 0 0 28px rgba(187, 114, 255, 0.24);
+        }
+
+        #achievementNotification.daily-notification .achievement-notification-label {
+            color: #d9b0ff;
+        }
+
+        .achievement-notification-label {
+            display: block;
+            margin-bottom: 4px;
+            color: #00eaff;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .achievement-notification-name {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 17px;
+            font-weight: bold;
+        }
+
+        .achievement-notification-description {
+            display: block;
+            color: rgba(255, 255, 255, 0.76);
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .difficulty-panel {
+            width: min(900px, 100%);
+            padding: clamp(22px, 4vw, 40px);
+            border: 1px solid rgba(0, 234, 255, 0.28);
+            border-radius: 24px;
+            background: rgba(12, 18, 39, 0.96);
+            box-shadow: 0 0 42px rgba(0, 234, 255, 0.12);
+        }
+
+        .difficulty-panel h2 {
+            margin-bottom: 8px;
+            font-size: clamp(24px, 5vw, 38px);
+            letter-spacing: 1px;
+        }
+
+        .difficulty-subtitle {
+            margin-bottom: 24px;
+        }
+
+        .difficulty-options {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .difficulty-card {
+            min-height: 174px;
+            padding: 20px 14px;
+            border: 2px solid rgba(255, 255, 255, 0.14);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            color: white;
+            font: inherit;
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .difficulty-card:hover {
+            border-color: rgba(0, 234, 255, 0.65);
+            transform: translateY(-2px);
+        }
+
+        .difficulty-card.selected {
+            border-color: #00eaff;
+            background: rgba(0, 234, 255, 0.1);
+            box-shadow: 0 0 22px rgba(0, 234, 255, 0.26);
+            transform: scale(1.025);
+        }
+
+        .difficulty-card:focus-visible,
+        .mainButton:focus-visible {
+            outline: 3px solid white;
+            outline-offset: 4px;
+        }
+
+        .difficulty-card strong,
+        .difficulty-card span {
+            display: block;
+        }
+
+        .difficulty-card strong {
+            margin-bottom: 9px;
+            color: #00eaff;
+            font-size: 21px;
+            letter-spacing: 1px;
+        }
+
+        .difficulty-card .card-description {
+            margin-bottom: 9px;
+            font-weight: bold;
+        }
+
+        .difficulty-card .card-details {
+            opacity: 0.68;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .result-details {
+            margin: 0 0 24px;
+            line-height: 1.7;
+        }
+
+        .tutorial-panel {
+            width: min(880px, 100%);
+            padding: clamp(22px, 4vw, 38px);
+            border: 1px solid rgba(0, 234, 255, 0.28);
+            border-radius: 24px;
+            background: rgba(12, 18, 39, 0.97);
+            box-shadow: 0 0 42px rgba(0, 234, 255, 0.14);
+            animation: tutorialPanelIn 0.3s ease-out both;
+        }
+
+        @keyframes tutorialPanelIn {
+            from {
+                opacity: 0;
+                transform: scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .tutorial-panel h2 {
+            margin-bottom: 8px;
+            font-size: clamp(28px, 5vw, 42px);
+            letter-spacing: 1px;
+        }
+
+        .tutorial-subtitle {
+            margin-bottom: 24px;
+        }
+
+        .tutorial-steps {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .tutorial-step {
+            min-width: 0;
+            min-height: 150px;
+            padding: 16px 12px;
+            border: 1px solid rgba(0, 234, 255, 0.18);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.045);
+            animation: tutorialStepIn 0.32s ease-out both;
+        }
+
+        .tutorial-step:nth-child(2) {
+            animation-delay: 0.04s;
+        }
+
+        .tutorial-step:nth-child(3) {
+            animation-delay: 0.08s;
+        }
+
+        .tutorial-step:nth-child(4) {
+            animation-delay: 0.12s;
+        }
+
+        @keyframes tutorialStepIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tutorial-icon {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 26px;
+        }
+
+        .tutorial-step h3 {
+            margin-bottom: 7px;
+            color: #00eaff;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        .tutorial-step p {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .tutorial-actions {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tutorial-actions .mainButton {
+            min-width: min(280px, 100%);
+            min-height: 52px;
+        }
+
+        .skip-tutorial-button {
+            min-height: 40px;
+            padding: 8px 18px;
+            border: 1px solid transparent;
+            border-radius: 9px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            transition: color 0.18s ease, border-color 0.18s ease;
+        }
+
+        .skip-tutorial-button:hover {
+            border-color: rgba(255, 255, 255, 0.22);
+            color: white;
+        }
+
+        .skip-tutorial-button:focus-visible {
+            outline: 3px solid white;
+            outline-offset: 3px;
+        }
+
+        .game-select-panel,
+        .dodge-difficulty-panel,
+        .dodge-result-panel {
+            width: min(860px, 100%);
+            padding: clamp(22px, 4vw, 38px);
+            border: 1px solid rgba(0, 234, 255, 0.28);
+            border-radius: 24px;
+            background: rgba(12, 18, 39, 0.97);
+            box-shadow: 0 0 42px rgba(0, 234, 255, 0.14);
+        }
+
+        .game-select-panel h2,
+        .dodge-difficulty-panel h2,
+        .dodge-result-panel h2 {
+            margin-bottom: 10px;
+            font-size: clamp(26px, 5vw, 40px);
+            letter-spacing: 1px;
+        }
+
+        .game-select-cards {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .game-select-card {
+            display: flex;
+            min-height: 205px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 22px;
+            border: 1px solid rgba(0, 234, 255, 0.24);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.045);
+            color: white;
+            text-align: center;
+        }
+
+        .game-select-card h3 {
+            margin-bottom: 10px;
+            color: #00eaff;
+            font-size: clamp(18px, 3vw, 24px);
+        }
+
+        .game-select-card p {
+            margin-bottom: 18px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+
+        .game-select-card .mainButton {
+            min-width: 140px;
+            min-height: 48px;
+            padding: 12px 24px;
+        }
+
+        .secondary-game-button {
+            min-height: 44px;
+            margin-top: 16px;
+            padding: 8px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.75);
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .secondary-game-button:hover {
+            border-color: #00eaff;
+            color: white;
+        }
+
+        .game-select-card:focus-within,
+        .secondary-game-button:focus-visible,
+        .dodge-pause-button:focus-visible,
+        .dodge-joystick:focus-visible,
+        .dodge-overlay-button:focus-visible {
+            outline: 3px solid white;
+            outline-offset: 4px;
+        }
+
+        .dodge-difficulty-panel .difficulty-options {
+            margin-top: 20px;
+        }
+
+        /* DODGE THE RED GAMEPLAY */
+        #dodgeGameScreen {
+            position: absolute;
+            inset: 0;
+            z-index: 13;
+            background:
+                radial-gradient(ellipse at center, rgba(10, 24, 45, 0.8), rgba(9, 11, 24, 0.98) 72%);
+        }
+
+        .dodge-hud {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            z-index: 2;
+            display: flex;
+            width: min(760px, calc(100% - 32px));
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            transform: translateX(-50%);
+        }
+
+        .dodge-stat {
+            min-width: 68px;
+            text-align: center;
+        }
+
+        .dodge-stat .value {
+            font-size: clamp(20px, 3vw, 28px);
+        }
+
+        .dodge-lives {
+            color: #ff596a;
+            white-space: nowrap;
+            font-size: 19px;
+            letter-spacing: 2px;
+        }
+
+        .dodge-pause-button {
+            min-width: 80px;
+            min-height: 44px;
+            border: 1px solid rgba(0, 234, 255, 0.55);
+            border-radius: 10px;
+            background: rgba(0, 234, 255, 0.08);
+            color: white;
+            font: inherit;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .dodge-hud .sound-toggle {
+            position: static;
+            z-index: auto;
+            min-width: 94px;
+        }
+
+        .dodge-arena {
+            position: absolute;
+            top: 82px;
+            bottom: 22px;
+            left: 50%;
+            width: min(900px, calc(100% - 32px));
+            overflow: hidden;
+            border: 1px solid rgba(0, 234, 255, 0.32);
+            border-radius: 22px;
+            background:
+                radial-gradient(circle at center, rgba(0, 234, 255, 0.055), transparent 55%),
+                linear-gradient(rgba(0, 234, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 234, 255, 0.035) 1px, transparent 1px),
+                #090f20;
+            background-size: auto, 36px 36px, 36px 36px, auto;
+            box-shadow: inset 0 0 35px rgba(0, 234, 255, 0.08), 0 0 24px rgba(0, 234, 255, 0.08);
+            transform: translateX(-50%);
+            touch-action: none;
+            isolation: isolate;
+        }
+
+        .dodge-arena::after {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            background: radial-gradient(ellipse at 50% 50%, rgba(0, 234, 255, 0.09), transparent 66%);
+            content: "";
+            opacity: 0.45;
+            pointer-events: none;
+            animation: dodgeArenaGlow 7s ease-in-out infinite alternate;
+        }
+
+        .dodge-arena.paused::after {
+            animation-play-state: paused;
+        }
+
+        @keyframes dodgeArenaGlow {
+            to {
+                opacity: 0.85;
+            }
+        }
+
+        #dodgeCanvas {
+            position: relative;
+            z-index: 1;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .dodge-joystick {
+            position: absolute;
+            z-index: 2;
+            bottom: 14px;
+            left: 14px;
+            display: none;
+            width: 112px;
+            height: 112px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(0, 234, 255, 0.35);
+            border-radius: 50%;
+            background: rgba(7, 16, 33, 0.58);
+            touch-action: none;
+            user-select: none;
+        }
+
+        .dodge-joystick-knob {
+            width: 44px;
+            height: 44px;
+            border: 2px solid rgba(0, 234, 255, 0.9);
+            border-radius: 50%;
+            background: rgba(0, 234, 255, 0.28);
+            box-shadow: 0 0 16px rgba(0, 234, 255, 0.45);
+            pointer-events: none;
+        }
+
+        .dodge-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(4, 7, 17, 0.78);
+            backdrop-filter: blur(5px);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .dodge-arena::after {
+                animation: none;
+            }
+        }
+
+        .dodge-pause-button,
+        .dodge-overlay-button {
+            touch-action: manipulation;
+        }
+
+        .dodge-overlay-panel {
+            width: min(400px, 100%);
+            padding: 30px 24px;
+            border: 1px solid rgba(0, 234, 255, 0.36);
+            border-radius: 20px;
+            background: #0c1227;
+            text-align: center;
+            box-shadow: 0 0 35px rgba(0, 234, 255, 0.16);
+        }
+
+        .dodge-overlay-panel h2 {
+            margin-bottom: 14px;
+            color: #00eaff;
+            font-size: clamp(26px, 6vw, 40px);
+        }
+
+        .dodge-overlay-panel p {
+            margin: 8px 0;
+        }
+
+        .dodge-overlay-actions {
+            display: grid;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .dodge-result-panel .sound-toggle {
+            position: static;
+            width: 100%;
+            min-height: 48px;
+            margin-bottom: 10px;
+        }
+
+        .dodge-overlay-button {
+            min-height: 48px;
+            border: 1px solid rgba(0, 234, 255, 0.35);
+            border-radius: 10px;
+            background: rgba(0, 234, 255, 0.08);
+            color: white;
+            font: inherit;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .dodge-overlay-button.primary {
+            background: #00eaff;
+            color: #090b18;
+        }
+
+        @media (pointer: coarse), (max-width: 600px) {
+            .dodge-joystick {
+                display: flex;
+            }
+        }
+
+        @media (max-width: 600px) {
+            #hud {
+                top: 16px;
+                width: min(360px, calc(100% - 32px));
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 4px 12px;
+            }
+
+            .stat {
+                min-width: 0;
+            }
+
+            .label {
+                font-size: 10px;
+                letter-spacing: 1px;
+            }
+
+            .value {
+                font-size: 26px;
+            }
+
+            .combo {
+                top: 176px;
+                font-size: 20px;
+            }
+
+            .difficulty-name {
+                font-size: 9px;
+            }
+
+            .hud-sound-toggle {
+                font-size: 9px;
+            }
+
+            .level-up-effect {
+                font-size: clamp(22px, 7vw, 32px);
+            }
+
+            #difficultyScreen {
+                padding: 14px;
+            }
+
+            #tutorialScreen {
+                padding: 12px;
+            }
+
+            .tutorial-panel {
+                padding: 19px 15px;
+                border-radius: 18px;
+            }
+
+            .tutorial-subtitle {
+                margin-bottom: 14px;
+                font-size: 14px;
+            }
+
+            .tutorial-steps {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+
+            .tutorial-step {
+                min-height: 112px;
+                padding: 10px 9px;
+            }
+
+            .tutorial-icon {
+                margin-bottom: 4px;
+                font-size: 22px;
+            }
+
+            .tutorial-step h3 {
+                margin-bottom: 4px;
+                font-size: 12px;
+            }
+
+            .tutorial-step p {
+                font-size: 12px;
+            }
+
+            .tutorial-actions {
+                gap: 4px;
+            }
+
+            .tutorial-actions .mainButton {
+                min-height: 48px;
+            }
+
+            .difficulty-panel {
+                padding: 22px 18px;
+                border-radius: 18px;
+            }
+
+            .difficulty-subtitle {
+                margin-bottom: 16px;
+            }
+
+            .difficulty-options {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+
+            .difficulty-card {
+                min-height: 0;
+                padding: 12px 14px;
+                text-align: left;
+            }
+
+            .difficulty-card strong,
+            .difficulty-card .card-description {
+                display: inline-block;
+                margin: 0 8px 4px 0;
+            }
+
+            .difficulty-card strong {
+                font-size: 18px;
+            }
+
+            .difficulty-card .card-details {
+                font-size: 12px;
+            }
+
+            .difficulty-panel > .mainButton {
+                width: 100%;
+                min-height: 52px;
+            }
+
+            .game-select-panel,
+            .dodge-difficulty-panel,
+            .dodge-result-panel {
+                padding: 22px 16px;
+                border-radius: 18px;
+            }
+
+            .game-select-cards {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                margin-top: 16px;
+            }
+
+            .game-select-card {
+                min-height: 160px;
+                padding: 16px;
+            }
+
+            .game-select-card p {
+                margin-bottom: 10px;
+            }
+
+            .achievements-header {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .daily-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .daily-footer {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .daily-footer .achievement-back-button {
+                width: 100%;
+            }
+
+            .achievement-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .achievement-card p {
+                min-height: 0;
+            }
+
+            #achievementNotification {
+                top: 10px;
+                padding: 11px 13px;
+            }
+
+            .dodge-hud {
+                top: 8px;
+                width: calc(100% - 20px);
+                gap: 5px;
+            }
+
+            .dodge-stat {
+                min-width: 0;
+            }
+
+            .dodge-stat .label {
+                font-size: 9px;
+                letter-spacing: 1px;
+            }
+
+            .dodge-stat .value {
+                font-size: 19px;
+            }
+
+            .dodge-lives {
+                font-size: 15px;
+                letter-spacing: 0;
+            }
+
+            .dodge-pause-button {
+                min-width: 66px;
+                min-height: 42px;
+                font-size: 12px;
+            }
+
+            .dodge-hud .sound-toggle {
+                min-width: 0;
+                max-width: 82px;
+                min-height: 40px;
+                padding: 5px 6px;
+                font-size: 9px;
+                letter-spacing: 0;
+                white-space: nowrap;
+            }
+
+            #soundToggle {
+                top: 8px;
+                right: 8px;
+                min-height: 40px;
+                padding: 6px 9px;
+                font-size: 11px;
+            }
+
+            .dodge-arena {
+                top: 70px;
+                bottom: 12px;
+                width: calc(100% - 20px);
+                border-radius: 16px;
+            }
+
+            .dodge-joystick {
+                width: 104px;
+                height: 104px;
+            }
+        }
+
+            @media (min-width: 601px) and (max-width: 900px) {
+                .tutorial-steps {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .tutorial-panel,
+                .tutorial-step {
+                    animation-duration: 0.01ms;
+                    animation-delay: 0ms;
+                }
+            }
+    </style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="true" aria-label="Turn sound off">🔊 SOUND ON</button>
+
+    <div id="hud">
+        <div class="stat">
+            <div class="label">Score</div>
+            <div class="value" id="score">0</div>
+        </div>
+
+        <div class="stat">
+            <div class="label">Time</div>
+            <div class="value" id="time">30</div>
+        </div>
+
+        <div class="stat">
+            <div class="label">Best</div>
+            <div class="value" id="best">0</div>
+        </div>
+
+        <div class="stat">
+            <div class="label">Level</div>
+            <div class="value" id="level">1</div>
+            <div class="difficulty-name" id="difficultyName">NORMAL</div>
+        </div>
+        <div class="stat">
+            <div class="label">Mode</div>
+            <div class="difficulty-name" id="modeName">NORMAL</div>
+        </div>
+        <div class="stat">
+            <div class="label">Sound</div>
+            <button class="sound-toggle hud-sound-toggle" id="oneButtonSoundToggle" data-sound-toggle type="button" aria-pressed="true" aria-label="Turn sound off">🔊 SOUND ON</button>
+        </div>
+    </div>
+
+    <div id="combo" class="combo">COMBO x0</div>
+
+    <button id="target"></button>
+
+    <div id="startScreen">
+        <h1>ONE BUTTON</h1>
+        <p>How fast can you click?</p>
+        <button class="mainButton" id="startButton">START</button>
+    </div>
+
+    <section id="tutorialScreen" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle" aria-describedby="tutorialSubtitle">
+        <div class="tutorial-panel">
+            <h2 id="tutorialTitle">HOW TO PLAY</h2>
+            <p class="tutorial-subtitle" id="tutorialSubtitle">One target. Thirty seconds. Beat your best score.</p>
+            <div class="tutorial-steps">
+                <article class="tutorial-step">
+                    <span class="tutorial-icon" aria-hidden="true">🎯</span>
+                    <h3>CLICK THE TARGET</h3>
+                    <p>Click the target to score points.</p>
+                </article>
+                <article class="tutorial-step">
+                    <span class="tutorial-icon" aria-hidden="true">⚡</span>
+                    <h3>MOVE FAST</h3>
+                    <p>The target moves after every hit.</p>
+                </article>
+                <article class="tutorial-step">
+                    <span class="tutorial-icon" aria-hidden="true">📈</span>
+                    <h3>LEVEL UP</h3>
+                    <p>Every 5 points makes the challenge harder.</p>
+                </article>
+                <article class="tutorial-step">
+                    <span class="tutorial-icon" aria-hidden="true">🏆</span>
+                    <h3>BEAT YOUR BEST</h3>
+                    <p>You have 30 seconds to get the highest score possible.</p>
+                </article>
+            </div>
+            <div class="tutorial-actions">
+                <button class="mainButton" id="tutorialContinueButton" type="button">GOT IT! PLAY</button>
+                <button class="skip-tutorial-button" id="skipTutorialButton" type="button">SKIP TUTORIAL</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="gameSelectScreen" aria-labelledby="gameSelectTitle">
+        <div class="game-select-panel">
+            <h2 id="gameSelectTitle">CHOOSE YOUR GAME</h2>
+            <div class="game-select-cards">
+                <article class="game-select-card">
+                    <h3>ONE BUTTON CHALLENGE</h3>
+                    <p>CLICK FAST. BEAT YOUR BEST.</p>
+                    <button class="mainButton" id="selectOneButtonGame" type="button">PLAY</button>
+                </article>
+                <article class="game-select-card">
+                    <h3>DODGE THE RED</h3>
+                    <p>SURVIVE. DODGE. BEAT YOUR BEST.</p>
+                    <button class="mainButton" id="selectDodgeGame" type="button">PLAY</button>
+                </article>
+            </div>
+            <button class="achievement-launch-button" id="showAchievementsButton" type="button">🏆 ACHIEVEMENTS <span id="selectorAchievementProgress">0 / 12</span></button>
+            <button class="achievement-launch-button daily-launch-button" id="showDailyChallengesButton" type="button">DAILY CHALLENGES <span id="selectorDailyProgress">0 / 3 COMPLETE</span></button>
+            <button class="sound-toggle game-select-sound" type="button" data-sound-toggle aria-pressed="true" aria-label="Turn sound off">🔊 SOUND ON</button>
+        </div>
+    </section>
+
+    <section id="achievementsScreen" role="dialog" aria-modal="true" aria-labelledby="achievementsTitle">
+        <div class="achievements-panel">
+            <header class="achievements-header">
+                <h2 id="achievementsTitle">ACHIEVEMENTS</h2>
+                <p class="achievement-progress" id="achievementProgress" aria-live="polite">0 / 12 UNLOCKED</p>
+                <button class="achievement-back-button" id="achievementsBackButton" type="button">BACK TO GAMES</button>
+            </header>
+            <div class="achievement-grid" id="achievementGrid"></div>
+        </div>
+    </section>
+
+    <section id="dailyChallengesScreen" role="dialog" aria-modal="true" aria-labelledby="dailyChallengesTitle">
+        <div class="daily-challenges-panel">
+            <header class="daily-header">
+                <div>
+                    <h2 id="dailyChallengesTitle">DAILY CHALLENGES</h2>
+                    <p class="daily-date" id="dailyChallengeDate">TODAY</p>
+                </div>
+                <p class="daily-stars" id="dailyStars">DAILY STARS: 0</p>
+            </header>
+            <div class="daily-challenge-list" id="dailyChallengeList"></div>
+            <footer class="daily-footer">
+                <p class="daily-completion-count" id="dailyCompletionCount" aria-live="polite">0 / 3 COMPLETE</p>
+                <button class="achievement-back-button" id="dailyChallengesBackButton" type="button">BACK TO GAMES</button>
+            </footer>
+        </div>
+    </section>
+
+    <div id="difficultyScreen" aria-labelledby="difficultyTitle">
+        <div class="difficulty-panel">
+            <h2 id="difficultyTitle">CHOOSE YOUR DIFFICULTY</h2>
+            <p class="difficulty-subtitle">How fast can you go?</p>
+            <div class="difficulty-options" role="group" aria-label="Choose a game difficulty">
+                <button class="difficulty-card" type="button" data-difficulty="EASY" aria-pressed="false">
+                    <strong>EASY</strong>
+                    <span class="card-description">Relaxed challenge</span>
+                    <span class="card-details">Slower target<br>Larger target<br>Great for beginners</span>
+                </button>
+                <button class="difficulty-card selected" type="button" data-difficulty="NORMAL" aria-pressed="true">
+                    <strong>NORMAL</strong>
+                    <span class="card-description">Balanced challenge</span>
+                    <span class="card-details">Standard speed<br>Standard difficulty<br>Recommended</span>
+                </button>
+                <button class="difficulty-card" type="button" data-difficulty="HARD" aria-pressed="false">
+                    <strong>HARD</strong>
+                    <span class="card-description">Extreme challenge</span>
+                    <span class="card-details">Faster target<br>Smaller target<br>For skilled players</span>
+                </button>
+            </div>
+            <button class="mainButton" id="startGameButton" type="button">START GAME</button>
+            <button class="secondary-game-button" id="oneButtonBackToGames" type="button">BACK TO GAMES</button>
+        </div>
+    </div>
+
+    <section id="dodgeDifficultyScreen" aria-labelledby="dodgeDifficultyTitle">
+        <div class="dodge-difficulty-panel">
+            <h2 id="dodgeDifficultyTitle">DODGE THE RED</h2>
+            <p class="difficulty-subtitle">Choose your survival challenge.</p>
+            <div class="difficulty-options" role="group" aria-label="Choose Dodge the Red difficulty">
+                <button class="difficulty-card" type="button" data-dodge-difficulty="EASY" aria-pressed="false">
+                    <strong>EASY</strong>
+                    <span class="card-description">More room to react</span>
+                    <span class="card-details">Fewer, slower hazards</span>
+                </button>
+                <button class="difficulty-card selected" type="button" data-dodge-difficulty="NORMAL" aria-pressed="true">
+                    <strong>NORMAL</strong>
+                    <span class="card-description">Balanced survival</span>
+                    <span class="card-details">Recommended challenge</span>
+                </button>
+                <button class="difficulty-card" type="button" data-dodge-difficulty="HARD" aria-pressed="false">
+                    <strong>HARD</strong>
+                    <span class="card-description">Fast and unforgiving</span>
+                    <span class="card-details">For skilled dodgers</span>
+                </button>
+            </div>
+            <button class="mainButton" id="startDodgeGameButton" type="button">START GAME</button>
+            <button class="secondary-game-button" id="dodgeBackToGames" type="button">BACK TO GAMES</button>
+        </div>
+    </section>
+
+    <section id="dodgeGameScreen" aria-label="Dodge the Red gameplay">
+        <div class="dodge-hud">
+            <div class="dodge-stat">
+                <div class="label">Score</div>
+                <div class="value" id="dodgeScore">0</div>
+            </div>
+            <div class="dodge-stat">
+                <div class="label">Time</div>
+                <div class="value" id="dodgeTime">0.0</div>
+            </div>
+            <div class="dodge-stat">
+                <div class="label">Lives</div>
+                <div class="dodge-lives" id="dodgeLives">♥♥♥</div>
+            </div>
+            <div class="dodge-stat">
+                <div class="label">Mode</div>
+                <div class="difficulty-name" id="dodgeMode">NORMAL</div>
+            </div>
+            <button class="sound-toggle" id="dodgeSoundToggle" data-sound-toggle type="button" aria-pressed="true" aria-label="Turn sound off">🔊 SOUND ON</button>
+            <button class="dodge-pause-button" id="dodgePauseButton" type="button">PAUSE</button>
+        </div>
+        <div class="dodge-arena" id="dodgeArena">
+            <canvas id="dodgeCanvas" aria-label="Move with WASD or arrow keys. Touch and drag to move on mobile."></canvas>
+            <button class="dodge-joystick" id="dodgeJoystick" type="button" aria-label="Touch and drag to move">
+                <span class="dodge-joystick-knob" id="dodgeJoystickKnob"></span>
+            </button>
+            <div class="dodge-overlay" id="dodgePauseOverlay">
+                <div class="dodge-overlay-panel">
+                    <h2>PAUSED</h2>
+                    <div class="dodge-overlay-actions">
+                        <button class="dodge-overlay-button primary" id="dodgeResumeButton" type="button">RESUME</button>
+                        <button class="dodge-overlay-button" id="dodgeRestartButton" type="button">RESTART</button>
+                        <button class="dodge-overlay-button" id="dodgeQuitButton" type="button">QUIT TO GAMES</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="dodge-overlay" id="dodgeGameOverScreen" aria-labelledby="dodgeGameOverTitle">
+        <div class="dodge-overlay-panel dodge-result-panel">
+            <h2 id="dodgeGameOverTitle">GAME OVER</h2>
+            <p>Survival time: <strong id="dodgeFinalTime">0.0s</strong></p>
+            <p>Final score: <strong id="dodgeFinalScore">0</strong></p>
+            <p>Best score: <strong id="dodgeFinalBest">0</strong></p>
+            <div class="dodge-overlay-actions">
+                <button class="sound-toggle" id="dodgeEndSoundToggle" data-sound-toggle type="button" aria-pressed="true" aria-label="Turn sound off">🔊 SOUND ON</button>
+                <button class="dodge-overlay-button primary" id="dodgePlayAgainButton" type="button">PLAY AGAIN</button>
+                <button class="dodge-overlay-button" id="dodgeGameOverBackButton" type="button">BACK TO GAMES</button>
+            </div>
+        </div>
+    </section>
+
+    <div id="endScreen">
+        <h1>TIME UP!</h1>
+        <p>Your score: <strong id="finalScore">0</strong></p>
+        <p class="result-details">Best: <strong id="finalBest">0</strong><br>Mode: <strong id="finalMode">NORMAL</strong></p>
+        <button class="mainButton" id="restartButton">PLAY AGAIN</button>
+    </div>
+
+    <div id="achievementNotification" aria-live="polite" aria-atomic="true">
+        <span class="achievement-notification-label" id="gameNotificationLabel">🏆 ACHIEVEMENT UNLOCKED</span>
+        <span class="achievement-notification-name" id="achievementNotificationName"></span>
+        <span class="achievement-notification-description" id="achievementNotificationDescription"></span>
+    </div>
+
+</div>
+
+<script>
+    const target = document.getElementById("target");
+    const scoreText = document.getElementById("score");
+    const timeText = document.getElementById("time");
+    const bestText = document.getElementById("best");
+
+    const startScreen = document.getElementById("startScreen");
+    const tutorialScreen = document.getElementById("tutorialScreen");
+    const gameSelectScreen = document.getElementById("gameSelectScreen");
+    const difficultyScreen = document.getElementById("difficultyScreen");
+    const dodgeDifficultyScreen = document.getElementById("dodgeDifficultyScreen");
+    const endScreen = document.getElementById("endScreen");
+
+    const startButton = document.getElementById("startButton");
+    const tutorialContinueButton = document.getElementById("tutorialContinueButton");
+    const skipTutorialButton = document.getElementById("skipTutorialButton");
+    const selectOneButtonGame = document.getElementById("selectOneButtonGame");
+    const selectDodgeGame = document.getElementById("selectDodgeGame");
+    const startGameButton = document.getElementById("startGameButton");
+    const startDodgeGameButton = document.getElementById("startDodgeGameButton");
+    const restartButton = document.getElementById("restartButton");
+
+    const finalScore = document.getElementById("finalScore");
+    const finalBest = document.getElementById("finalBest");
+    const finalMode = document.getElementById("finalMode");
+    const dodgeGameScreen = document.getElementById("dodgeGameScreen");
+    const dodgeArena = document.getElementById("dodgeArena");
+    const dodgeCanvas = document.getElementById("dodgeCanvas");
+    const dodgeContext = dodgeCanvas.getContext("2d");
+    const dodgePauseOverlay = document.getElementById("dodgePauseOverlay");
+    const dodgeGameOverScreen = document.getElementById("dodgeGameOverScreen");
+    const dodgeJoystick = document.getElementById("dodgeJoystick");
+    const dodgeJoystickKnob = document.getElementById("dodgeJoystickKnob");
+
+    const dodgeDifficultyConfig = {
+        EASY: { playerSpeed: 330, startingObstacles: 1, obstacleSpeed: 95, spawnInterval: 1.45, maxObstacles: 8, scoreMultiplier: 1 },
+        NORMAL: { playerSpeed: 390, startingObstacles: 2, obstacleSpeed: 125, spawnInterval: 1.15, maxObstacles: 11, scoreMultiplier: 1.25 },
+        HARD: { playerSpeed: 450, startingObstacles: 3, obstacleSpeed: 160, spawnInterval: 0.85, maxObstacles: 15, scoreMultiplier: 1.5 }
+    };
+    const savedDodgeDifficulty = readLocalStorage("oneButtonChallenge_dodgeTheRed_difficulty");
+    let selectedDodgeDifficulty = Object.prototype.hasOwnProperty.call(dodgeDifficultyConfig, savedDodgeDifficulty)
+        ? savedDodgeDifficulty
+        : "NORMAL";
+    const dodgeGameState = {
+        running: false,
+        paused: false,
+        animationFrame: 0,
+        lastFrameTime: 0,
+        elapsed: 0,
+        score: 0,
+        best: Number(readLocalStorage("oneButtonChallenge_dodgeTheRed_best")) || 0,
+        lives: 3,
+        player: { x: 0, y: 0, radius: 12 },
+        obstacles: [],
+        powerUps: [],
+        particles: [],
+        keys: new Set(),
+        touch: { x: 0, y: 0, pointerId: null },
+        spawnElapsed: 0,
+        nextPowerUpAt: 12 + Math.random() * 6,
+        hudElapsed: 0,
+        dailyReportedSecond: 0,
+        invulnerableUntil: 0,
+        shieldUntil: 0,
+        speedUntil: 0,
+        bonusUntil: 0,
+        hitFlashUntil: 0,
+        scorePopUntil: 0,
+        scorePopText: "",
+        lastPowerUpType: "",
+        deviceScale: 1
+    };
+
+    const preGameDifficulties = {
+        EASY: {
+            name: "EASY",
+            targetSizeMultiplier: 1.15,
+            movementSpeedMultiplier: 0.75,
+            description: "Relaxed challenge"
+        },
+        NORMAL: {
+            name: "NORMAL",
+            targetSizeMultiplier: 1,
+            movementSpeedMultiplier: 1,
+            description: "Balanced challenge"
+        },
+        HARD: {
+            name: "HARD",
+            targetSizeMultiplier: 0.85,
+            movementSpeedMultiplier: 1.25,
+            description: "Extreme challenge"
+        }
+    };
+
+    let score = 0;
+    let time = 30;
+    let gameRunning = false;
+    let timer;
+    let combo = 0;
+    let comboTimer;
+    let hitAnimationTimer;
+    let audioContext;
+    let audioMasterGain;
+
+    const soundPreferenceKey = "oneButtonChallenge_soundEnabled";
+    let soundEnabled = readLocalStorage(soundPreferenceKey) !== "false";
+    const tutorialSeenKey = "oneButtonChallengeTutorialSeen";
+    let tutorialSeen = readLocalStorage(tutorialSeenKey) === "true";
+    let best = Number(readLocalStorage("oneButtonBest")) || 0;
+    let level = 1;
+    let targetSize = 85;
+    let selectedPreGameDifficulty = "NORMAL";
+    const achievementStorageKey = "oneButtonChallenge_achievements";
+    const totalHitsStorageKey = "oneButtonChallenge_totalHits";
+    const ACHIEVEMENTS = [
+        { id: "firstHit", name: "FIRST HIT", description: "Hit the target for the first time." },
+        { id: "tenHits", name: "QUICK HANDS", description: "Score 10 successful hits." },
+        { id: "comboMaster", name: "COMBO MASTER", description: "Reach a 10x combo." },
+        { id: "levelFive", name: "LEVEL UP", description: "Reach Level 5." },
+        { id: "endless", name: "ENDLESS", description: "Enter ENDLESS mode." },
+        { id: "highScorer", name: "HIGH SCORER", description: "Score 25 or more in one round." },
+        { id: "survivor", name: "SURVIVOR", description: "Survive for 30 seconds." },
+        { id: "powerHunter", name: "POWER HUNTER", description: "Use your first power-up." },
+        { id: "threeLives", name: "THREE LIVES", description: "Survive 15 seconds without losing a life." },
+        { id: "dodgeMaster", name: "DODGE MASTER", description: "Reach 100 points." },
+        { id: "arcadePlayer", name: "ARCADE PLAYER", description: "Play both games." },
+        { id: "completionist", name: "COMPLETIONIST", description: "Unlock every other achievement." }
+    ];
+    const DAILY_CHALLENGE_STORAGE_KEY = "oneButtonChallenge_dailyChallenges";
+    const DAILY_STARS_STORAGE_KEY = "oneButtonChallenge_dailyStars";
+    const DAILY_CHALLENGE_POOL = [
+        { id: "hits15", title: "HIT 15 TARGETS", description: "Hit 15 targets across your rounds today.", game: "oneButton", goal: 15, type: "hits", unit: "targets" },
+        { id: "roundHits25", title: "HIT 25 TARGETS IN ONE ROUND", description: "Hit 25 targets in a single One Button round.", game: "oneButton", goal: 25, type: "roundHits", unit: "hits" },
+        { id: "combo10", title: "REACH 10X COMBO", description: "Build a 10x combo in One Button.", game: "oneButton", goal: 10, type: "combo", unit: "combo" },
+        { id: "combo15", title: "REACH 15X COMBO", description: "Build a 15x combo in One Button.", game: "oneButton", goal: 15, type: "combo", unit: "combo" },
+        { id: "level5", title: "REACH LEVEL 5", description: "Reach Level 5 in One Button.", game: "oneButton", goal: 5, type: "level", unit: "level" },
+        { id: "score20", title: "SCORE 20 POINTS", description: "Score 20 points in one One Button round.", game: "oneButton", goal: 20, type: "score", unit: "points" },
+        { id: "score25", title: "SCORE 25 POINTS", description: "Score 25 points in one One Button round.", game: "oneButton", goal: 25, type: "score", unit: "points" },
+        { id: "dodge20", title: "SURVIVE 20 SECONDS", description: "Stay alive in Dodge the Red for 20 seconds.", game: "dodgeTheRed", goal: 20, type: "survival", unit: "seconds" },
+        { id: "dodge30", title: "SURVIVE 30 SECONDS", description: "Stay alive in Dodge the Red for 30 seconds.", game: "dodgeTheRed", goal: 30, type: "survival", unit: "seconds" },
+        { id: "powerUp1", title: "COLLECT 1 POWER-UP", description: "Collect any Dodge the Red power-up.", game: "dodgeTheRed", goal: 1, type: "powerUps", unit: "power-ups" },
+        { id: "powerUp2", title: "COLLECT 2 POWER-UPS", description: "Collect two Dodge the Red power-ups today.", game: "dodgeTheRed", goal: 2, type: "powerUps", unit: "power-ups" },
+        { id: "dodgeScore75", title: "REACH SCORE 75", description: "Reach a Dodge the Red score of 75.", game: "dodgeTheRed", goal: 75, type: "dodgeScore", unit: "points" },
+        { id: "dodgeScore100", title: "REACH SCORE 100", description: "Reach a Dodge the Red score of 100.", game: "dodgeTheRed", goal: 100, type: "dodgeScore", unit: "points" },
+        { id: "threeLives15", title: "KEEP ALL 3 LIVES", description: "Survive 15 seconds without losing a life.", game: "dodgeTheRed", goal: 15, type: "threeLives", unit: "seconds" },
+        { id: "startBothGames", title: "START BOTH GAMES", description: "Actually start One Button and Dodge the Red today.", game: "crossGame", goal: 2, type: "startBoth", unit: "games" }
+    ];
+    let dailyChallengeState;
+    let dailyStars = 0;
+    let dailyRolloverTimer;
+    let dailyStorageWritable = true;
+    let achievementData = loadAchievements();
+    const storedTotalHits = Number(readLocalStorage(totalHitsStorageKey));
+    let totalHits = Number.isSafeInteger(storedTotalHits) && storedTotalHits > 0 ? storedTotalHits : 0;
+    const achievementNotificationQueue = [];
+    let achievementNotificationActive = false;
+    let achievementNotificationTimer;
+    let achievementNotificationNextTimer;
+    const difficultyConfig = {
+        1: { name: "NORMAL", minScore: 0, targetSize: 85, moveDuration: 120, jitter: 0 },
+        2: { name: "QUICK", minScore: 5, targetSize: 78, moveDuration: 105, jitter: 0 },
+        3: { name: "FAST", minScore: 10, targetSize: 70, moveDuration: 90, jitter: 0 },
+        4: { name: "HARD", minScore: 15, targetSize: 63, moveDuration: 78, jitter: 12 },
+        5: { name: "EXTREME", minScore: 20, targetSize: 56, moveDuration: 70, jitter: 22 }
+    };
+    bestText.textContent = best;
+
+    function getDifficultyConfig(currentLevel) {
+        if (currentLevel <= 5) {
+            return difficultyConfig[currentLevel];
+        }
+
+        const endlessLevels = currentLevel - 5;
+        return {
+            name: "ENDLESS",
+            targetSize: Math.max(30, difficultyConfig[5].targetSize - endlessLevels * 2),
+            moveDuration: Math.max(48, difficultyConfig[5].moveDuration - endlessLevels * 2),
+            jitter: Math.min(42, difficultyConfig[5].jitter + endlessLevels * 3)
+        };
+    }
+
+    function applyDifficulty() {
+        const config = getDifficultyConfig(level);
+        const preGameConfig = preGameDifficulties[selectedPreGameDifficulty];
+        targetSize = Math.max(30, Math.round(config.targetSize * preGameConfig.targetSizeMultiplier));
+        target.style.width = targetSize + "px";
+        target.style.height = targetSize + "px";
+        target.style.setProperty("--move-duration", config.moveDuration / preGameConfig.movementSpeedMultiplier + "ms");
+        document.getElementById("level").textContent = level;
+        document.getElementById("difficultyName").textContent = config.name;
+        document.getElementById("modeName").textContent = preGameConfig.name;
+    }
+
+    function playTone(startFrequency, endFrequency, duration, type, volume) {
+        if (!soundEnabled) return;
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+
+        if (!audioContext) {
+            audioContext = new AudioContext();
+        }
+        if (audioContext.state === "suspended") {
+            const resumePromise = audioContext.resume();
+            if (resumePromise && typeof resumePromise.catch === "function") {
+                resumePromise.catch((error) => {
+                    console.warn("Unable to resume game audio:", error);
+                });
+            }
+        }
+
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const now = audioContext.currentTime;
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(startFrequency, now);
+        oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration);
+        gain.gain.setValueAtTime(volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        oscillator.connect(gain);
+        if (!audioMasterGain) {
+            audioMasterGain = audioContext.createGain();
+            audioMasterGain.gain.value = soundEnabled ? 1 : 0;
+            audioMasterGain.connect(audioContext.destination);
+        }
+        gain.connect(audioMasterGain);
+        oscillator.start(now);
+        oscillator.stop(now + duration);
+    }
+
+    function playDodgeTone(startFrequency, endFrequency, duration, type, volume) {
+        try {
+            playTone(startFrequency, endFrequency, duration, type, volume);
+        } catch (error) {
+            console.warn("Dodge the Red audio is unavailable:", error);
+        }
+    }
+
+    function readLocalStorage(key) {
+        try {
+            return localStorage.getItem(key);
+        } catch (error) {
+            console.warn("Unable to read localStorage key:", key, error);
+            return null;
+        }
+    }
+
+    function loadAchievements() {
+        const stored = readLocalStorage(achievementStorageKey);
+        if (!stored) {
+            return { unlocked: {}, gamesPlayed: { oneButton: false, dodgeTheRed: false } };
+        }
+
+        try {
+            const parsed = JSON.parse(stored);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                throw new TypeError("Achievement data must be an object.");
+            }
+
+            const unlocked = {};
+            ACHIEVEMENTS.forEach(({ id }) => {
+                unlocked[id] = parsed.unlocked && parsed.unlocked[id] === true;
+            });
+            return {
+                unlocked,
+                gamesPlayed: {
+                    oneButton: Boolean(parsed.gamesPlayed && parsed.gamesPlayed.oneButton),
+                    dodgeTheRed: Boolean(parsed.gamesPlayed && parsed.gamesPlayed.dodgeTheRed)
+                }
+            };
+        } catch (error) {
+            console.warn("Unable to load achievements:", error);
+            return { unlocked: {}, gamesPlayed: { oneButton: false, dodgeTheRed: false } };
+        }
+    }
+
+    function saveAchievements() {
+        writeLocalStorage(achievementStorageKey, JSON.stringify(achievementData));
+    }
+
+    function isAchievementUnlocked(id) {
+        return achievementData.unlocked[id] === true;
+    }
+
+    function getAchievementProgress() {
+        return ACHIEVEMENTS.filter(({ id }) => isAchievementUnlocked(id)).length;
+    }
+
+    function renderAchievementCards() {
+        const grid = document.getElementById("achievementGrid");
+        const fragment = document.createDocumentFragment();
+        ACHIEVEMENTS.forEach((achievement) => {
+            const card = document.createElement("article");
+            card.className = "achievement-card locked";
+            card.dataset.achievementCard = achievement.id;
+
+            const heading = document.createElement("h3");
+            heading.dataset.achievementName = achievement.id;
+            const description = document.createElement("p");
+            description.textContent = achievement.description;
+            const status = document.createElement("span");
+            status.className = "achievement-status";
+            status.dataset.achievementStatus = achievement.id;
+
+            card.append(heading, description, status);
+            fragment.appendChild(card);
+        });
+        grid.replaceChildren(fragment);
+        updateAchievementUI();
+    }
+
+    function updateAchievementUI() {
+        const count = getAchievementProgress();
+        document.getElementById("achievementProgress").textContent = count + " / " + ACHIEVEMENTS.length + " UNLOCKED";
+        document.getElementById("selectorAchievementProgress").textContent = count + " / " + ACHIEVEMENTS.length;
+
+        ACHIEVEMENTS.forEach((achievement) => {
+            const unlocked = isAchievementUnlocked(achievement.id);
+            const card = document.querySelector('[data-achievement-card="' + achievement.id + '"]');
+            if (!card) return;
+            card.classList.toggle("unlocked", unlocked);
+            card.classList.toggle("locked", !unlocked);
+            card.querySelector("[data-achievement-name]").textContent = (unlocked ? "🏆 " : "🔒 ") + achievement.name;
+            card.querySelector("[data-achievement-status]").textContent = unlocked ? "UNLOCKED" : "LOCKED";
+        });
+    }
+
+    function showNextGameNotification() {
+        if (!achievementNotificationQueue.length) {
+            achievementNotificationActive = false;
+            return;
+        }
+        achievementNotificationActive = true;
+        const notificationData = achievementNotificationQueue.shift();
+        document.getElementById("gameNotificationLabel").textContent = notificationData.label;
+        document.getElementById("achievementNotificationName").textContent = notificationData.name;
+        document.getElementById("achievementNotificationDescription").textContent = notificationData.description;
+        const notification = document.getElementById("achievementNotification");
+        notification.classList.toggle("daily-notification", notificationData.kind === "daily");
+        notification.classList.add("visible");
+
+        achievementNotificationTimer = setTimeout(() => {
+            notification.classList.remove("visible");
+            achievementNotificationNextTimer = setTimeout(showNextGameNotification, 280);
+        }, 3000);
+    }
+
+    function queueGameNotification(notificationData) {
+        achievementNotificationQueue.push(notificationData);
+        if (!achievementNotificationActive) {
+            showNextGameNotification();
+        }
+    }
+
+    function checkCompletionist() {
+        const remaining = ACHIEVEMENTS.filter((achievement) => achievement.id !== "completionist");
+        if (remaining.every(({ id }) => isAchievementUnlocked(id))) {
+            unlockAchievement("completionist");
+        }
+    }
+
+    function unlockAchievement(id) {
+        const achievement = ACHIEVEMENTS.find((item) => item.id === id);
+        if (!achievement || isAchievementUnlocked(id)) return false;
+
+        achievementData.unlocked[id] = true;
+        saveAchievements();
+        updateAchievementUI();
+        queueGameNotification({
+            kind: "achievement",
+            label: "🏆 ACHIEVEMENT UNLOCKED",
+            name: achievement.name,
+            description: achievement.description
+        });
+        if (soundEnabled) {
+            playTone(880, 1320, 0.22, "sine", 0.13);
+        }
+        if (id !== "completionist") {
+            checkCompletionist();
+        }
+        return true;
+    }
+
+    function markGamePlayed(game) {
+        if (game !== "oneButton" && game !== "dodgeTheRed") return;
+        if (achievementData.gamesPlayed[game]) return;
+
+        achievementData.gamesPlayed[game] = true;
+        saveAchievements();
+        if (achievementData.gamesPlayed.oneButton && achievementData.gamesPlayed.dodgeTheRed) {
+            unlockAchievement("arcadePlayer");
+        }
+    }
+
+    function recordOneButtonHit() {
+        if (totalHits < Number.MAX_SAFE_INTEGER) {
+            totalHits++;
+        }
+        writeLocalStorage(totalHitsStorageKey, String(totalHits));
+        if (totalHits >= 1) unlockAchievement("firstHit");
+        if (totalHits >= 10) unlockAchievement("tenHits");
+    }
+
+    function getLocalDateKey(date) {
+        return [
+            date.getFullYear(),
+            String(date.getMonth() + 1).padStart(2, "0"),
+            String(date.getDate()).padStart(2, "0")
+        ].join("-");
+    }
+
+    function createDailyRandom(seed) {
+        return function () {
+            seed = (seed + 0x6D2B79F5) | 0;
+            let value = seed;
+            value = Math.imul(value ^ (value >>> 15), value | 1);
+            value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+            return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+
+    function createDailyChallengeState(date) {
+        const dateKey = getLocalDateKey(date);
+        let seed = 2166136261;
+        for (let index = 0; index < dateKey.length; index++) {
+            seed = Math.imul(seed ^ dateKey.charCodeAt(index), 16777619);
+        }
+        const random = createDailyRandom(seed);
+        const shuffle = (items) => {
+            const shuffled = items.slice();
+            for (let index = shuffled.length - 1; index > 0; index--) {
+                const swapIndex = Math.floor(random() * (index + 1));
+                [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+            }
+            return shuffled;
+        };
+
+        const oneButton = shuffle(DAILY_CHALLENGE_POOL.filter((challenge) => challenge.game === "oneButton"))[0];
+        const dodge = shuffle(DAILY_CHALLENGE_POOL.filter((challenge) => challenge.game === "dodgeTheRed"))[0];
+        const remaining = DAILY_CHALLENGE_POOL.filter((challenge) => challenge.id !== oneButton.id && challenge.id !== dodge.id);
+        const third = shuffle(remaining).find((challenge) => {
+            const sameRoundGoal = challenge.game === oneButton.game
+                && challenge.goal === oneButton.goal
+                && ((challenge.type === "score" && oneButton.type === "roundHits")
+                    || (challenge.type === "roundHits" && oneButton.type === "score"));
+            return !sameRoundGoal;
+        });
+        const selected = [oneButton, dodge, third];
+        return {
+            date: dateKey,
+            challenges: selected.map(({ id }) => ({ id, progress: 0, completed: false })),
+            startedGames: { oneButton: false, dodgeTheRed: false },
+            allCompleteNotified: false
+        };
+    }
+
+    function loadDailyChallengeState(date) {
+        const dateKey = getLocalDateKey(date);
+        const stored = readLocalStorage(DAILY_CHALLENGE_STORAGE_KEY);
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                const validEntries = parsed && parsed.date === dateKey
+                    && Array.isArray(parsed.challenges)
+                    && parsed.challenges.length === 3
+                    && new Set(parsed.challenges.map((entry) => entry.id)).size === 3
+                    && parsed.challenges.every((entry) => DAILY_CHALLENGE_POOL.some((challenge) => challenge.id === entry.id));
+                if (validEntries) {
+                    const challenges = parsed.challenges.map((entry) => {
+                        const definition = DAILY_CHALLENGE_POOL.find((challenge) => challenge.id === entry.id);
+                        const rawProgress = Number(entry.progress);
+                        const progress = Number.isFinite(rawProgress)
+                            ? Math.max(0, Math.min(definition.goal, rawProgress))
+                            : 0;
+                        return {
+                            id: entry.id,
+                            progress: entry.completed ? definition.goal : progress,
+                            completed: entry.completed === true || progress >= definition.goal
+                        };
+                    });
+                    return {
+                        date: dateKey,
+                        challenges,
+                        startedGames: {
+                            oneButton: Boolean(parsed.startedGames && parsed.startedGames.oneButton),
+                            dodgeTheRed: Boolean(parsed.startedGames && parsed.startedGames.dodgeTheRed)
+                        },
+                        allCompleteNotified: parsed.allCompleteNotified === true
+                            && challenges.every((challenge) => challenge.completed)
+                    };
+                }
+            } catch (error) {
+                console.warn("Unable to load daily challenges:", error);
+            }
+        }
+        return createDailyChallengeState(date);
+    }
+
+    function saveDailyChallengeState() {
+        writeDailyStorage(DAILY_CHALLENGE_STORAGE_KEY, JSON.stringify(dailyChallengeState));
+    }
+
+    function writeDailyStorage(key, value) {
+        if (!dailyStorageWritable) return;
+        try {
+            localStorage.setItem(key, value);
+        } catch (error) {
+            dailyStorageWritable = false;
+            console.warn("Unable to save daily challenge data; progress will remain for this session.", error);
+        }
+    }
+
+    function getDailyChallengeDefinition(id) {
+        return DAILY_CHALLENGE_POOL.find((challenge) => challenge.id === id);
+    }
+
+    function renderDailyChallengeCards() {
+        const list = document.getElementById("dailyChallengeList");
+        const fragment = document.createDocumentFragment();
+        dailyChallengeState.challenges.forEach(({ id }) => {
+            const definition = getDailyChallengeDefinition(id);
+            const card = document.createElement("article");
+            card.className = "daily-challenge-card";
+            card.dataset.dailyChallengeCard = id;
+
+            const heading = document.createElement("h3");
+            heading.dataset.dailyChallengeTitle = id;
+            const description = document.createElement("p");
+            description.dataset.dailyChallengeDescription = id;
+            const progressRow = document.createElement("div");
+            progressRow.className = "daily-challenge-progress-row";
+            const status = document.createElement("span");
+            status.className = "daily-challenge-status";
+            status.dataset.dailyChallengeStatus = id;
+            const count = document.createElement("span");
+            count.className = "daily-challenge-count";
+            count.dataset.dailyChallengeCount = id;
+            progressRow.append(status, count);
+            const track = document.createElement("div");
+            track.className = "daily-progress-track";
+            track.setAttribute("aria-hidden", "true");
+            const fill = document.createElement("div");
+            fill.className = "daily-progress-fill";
+            fill.dataset.dailyChallengeProgress = id;
+            track.appendChild(fill);
+            card.append(heading, description, progressRow, track);
+            fragment.appendChild(card);
+            description.textContent = definition.description;
+        });
+        list.replaceChildren(fragment);
+        updateDailyChallengeUI();
+    }
+
+    function updateDailyChallengeUI() {
+        if (!dailyChallengeState) return;
+        const completedCount = dailyChallengeState.challenges.filter((entry) => entry.completed).length;
+        const countText = completedCount + " / 3 COMPLETE";
+        document.getElementById("selectorDailyProgress").textContent = countText;
+        document.getElementById("dailyCompletionCount").textContent = countText;
+        document.getElementById("dailyStars").textContent = "DAILY STARS: " + dailyStars;
+        const [year, month, day] = dailyChallengeState.date.split("-").map(Number);
+        const challengeDate = new Date(year, month - 1, day);
+        document.getElementById("dailyChallengeDate").textContent = "TODAY — " + challengeDate.toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric"
+        });
+
+        dailyChallengeState.challenges.forEach((entry) => {
+            const definition = getDailyChallengeDefinition(entry.id);
+            const card = document.querySelector('[data-daily-challenge-card="' + entry.id + '"]');
+            if (!card) return;
+            const progress = Math.min(definition.goal, Math.max(0, entry.progress));
+            card.classList.toggle("completed", entry.completed);
+            card.querySelector("[data-daily-challenge-title]").textContent = (entry.completed ? "✓ " : "○ ") + definition.title;
+            const gameLabel = definition.game === "oneButton" ? "ONE BUTTON"
+                : definition.game === "dodgeTheRed" ? "DODGE THE RED" : "BOTH GAMES";
+            card.querySelector("[data-daily-challenge-status]").textContent = entry.completed ? "COMPLETE" : gameLabel;
+            card.querySelector("[data-daily-challenge-count]").textContent = progress + " / " + definition.goal;
+            card.querySelector("[data-daily-challenge-progress]").style.width = (progress / definition.goal * 100) + "%";
+        });
+    }
+
+    function ensureDailyChallengeDate(date) {
+        const dateKey = getLocalDateKey(date);
+        if (!dailyChallengeState || dailyChallengeState.date !== dateKey) {
+            dailyChallengeState = loadDailyChallengeState(date);
+            if (dailyChallengeState.date !== dateKey) {
+                dailyChallengeState = createDailyChallengeState(date);
+            }
+            saveDailyChallengeState();
+            renderDailyChallengeCards();
+        }
+        return dailyChallengeState;
+    }
+
+    function awardDailyStar() {
+        if (dailyStars < Number.MAX_SAFE_INTEGER) dailyStars++;
+        writeDailyStorage(DAILY_STARS_STORAGE_KEY, String(dailyStars));
+    }
+
+    function completeDailyChallenge(entry, definition) {
+        entry.progress = definition.goal;
+        entry.completed = true;
+        awardDailyStar();
+        queueGameNotification({
+            kind: "daily",
+            label: "DAILY CHALLENGE COMPLETE!",
+            name: definition.title,
+            description: "+1 DAILY STAR"
+        });
+        if (soundEnabled) {
+            playTone(740, 1110, 0.2, "triangle", 0.12);
+        }
+    }
+
+    function updateDailyChallengeProgress(eventType, value) {
+        ensureDailyChallengeDate(new Date());
+        let changed = false;
+        const newlyCompleted = [];
+
+        if (eventType === "gameStarted" && (value === "oneButton" || value === "dodgeTheRed")) {
+            if (!dailyChallengeState.startedGames[value]) {
+                dailyChallengeState.startedGames[value] = true;
+                changed = true;
+            }
+        }
+
+        dailyChallengeState.challenges.forEach((entry) => {
+            if (entry.completed) return;
+            const definition = getDailyChallengeDefinition(entry.id);
+            let nextProgress = entry.progress;
+
+            if (eventType === "oneButtonHit" && definition.type === "hits") {
+                nextProgress += 1;
+            } else if (eventType === "oneButtonHit" && definition.type === "roundHits") {
+                nextProgress = Math.max(nextProgress, Number(value.score) || 0);
+            } else if (eventType === "oneButtonHit" && definition.type === "combo") {
+                nextProgress = Math.max(nextProgress, Number(value.combo) || 0);
+            } else if (eventType === "oneButtonLevel" && definition.type === "level") {
+                nextProgress = Math.max(nextProgress, Number(value) || 0);
+            } else if (eventType === "oneButtonHit" && definition.type === "score") {
+                nextProgress = Math.max(nextProgress, Number(value.score) || 0);
+            } else if (eventType === "dodgeElapsed" && definition.type === "survival") {
+                nextProgress = Math.max(nextProgress, Math.floor(Number(value.elapsed) || 0));
+            } else if (eventType === "dodgeElapsed" && definition.type === "threeLives" && value.lives === 3) {
+                nextProgress = Math.max(nextProgress, Math.floor(Number(value.elapsed) || 0));
+            } else if (eventType === "dodgePowerUp" && definition.type === "powerUps") {
+                nextProgress += 1;
+            } else if (eventType === "dodgeScore" && definition.type === "dodgeScore") {
+                nextProgress = Math.max(nextProgress, Number(value) || 0);
+            } else if (eventType === "gameStarted" && definition.type === "startBoth") {
+                nextProgress = Number(dailyChallengeState.startedGames.oneButton) + Number(dailyChallengeState.startedGames.dodgeTheRed);
+            }
+
+            nextProgress = Math.max(0, Math.min(definition.goal, nextProgress));
+            if (nextProgress !== entry.progress) {
+                entry.progress = nextProgress;
+                changed = true;
+            }
+            if (entry.progress >= definition.goal) {
+                entry.completed = true;
+                newlyCompleted.push({ entry, definition });
+                changed = true;
+            }
+        });
+
+        if (!changed) return;
+        if (dailyChallengeState.challenges.every((entry) => entry.completed) && !dailyChallengeState.allCompleteNotified) {
+            dailyChallengeState.allCompleteNotified = true;
+        }
+        saveDailyChallengeState();
+        newlyCompleted.forEach(({ entry, definition }) => completeDailyChallenge(entry, definition));
+        updateDailyChallengeUI();
+
+        if (dailyChallengeState.allCompleteNotified && newlyCompleted.length
+            && dailyChallengeState.challenges.every((entry) => entry.completed)) {
+            queueGameNotification({
+                kind: "daily",
+                label: "DAILY CHALLENGES COMPLETE!",
+                name: "3 / 3 COMPLETE",
+                description: "DAILY STARS +3"
+            });
+        }
+    }
+
+    function scheduleDailyRollover() {
+        clearTimeout(dailyRolloverTimer);
+        const now = new Date();
+        const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 100);
+        dailyRolloverTimer = setTimeout(() => {
+            ensureDailyChallengeDate(new Date());
+            scheduleDailyRollover();
+        }, Math.max(1000, nextDay.getTime() - now.getTime()));
+    }
+
+    function initializeDailyChallenges() {
+        const now = new Date();
+        const storedStars = Number(readLocalStorage(DAILY_STARS_STORAGE_KEY));
+        dailyStars = Number.isSafeInteger(storedStars) && storedStars > 0 ? storedStars : 0;
+        dailyChallengeState = loadDailyChallengeState(now);
+        if (dailyChallengeState.date !== getLocalDateKey(now)) {
+            dailyChallengeState = createDailyChallengeState(now);
+        }
+        saveDailyChallengeState();
+        renderDailyChallengeCards();
+        scheduleDailyRollover();
+    }
+
+    function updateSoundUI() {
+        const label = soundEnabled ? "🔊 SOUND ON" : "🔇 SOUND OFF";
+        document.querySelectorAll(".sound-toggle").forEach((button) => {
+            button.textContent = label;
+            button.setAttribute("aria-pressed", String(soundEnabled));
+            button.setAttribute("aria-label", soundEnabled ? "Turn sound off" : "Turn sound on");
+            button.classList.toggle("sound-off", !soundEnabled);
+        });
+    }
+
+    function setSoundEnabled(enabled) {
+        soundEnabled = Boolean(enabled);
+        writeLocalStorage(soundPreferenceKey, String(soundEnabled));
+        if (audioMasterGain && audioContext) {
+            const now = audioContext.currentTime;
+            audioMasterGain.gain.cancelScheduledValues(now);
+            audioMasterGain.gain.setTargetAtTime(soundEnabled ? 1 : 0, now, 0.015);
+        }
+        updateSoundUI();
+    }
+
+    function toggleSound() {
+        setSoundEnabled(!soundEnabled);
+    }
+
+    function writeLocalStorage(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (error) {
+            console.warn("Unable to save localStorage key:", key, error);
+        }
+    }
+
+    function removeLocalStorage(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch (error) {
+            console.warn("Unable to remove localStorage key:", key, error);
+        }
+    }
+
+    function resetTutorialState() {
+        tutorialSeen = false;
+        removeLocalStorage(tutorialSeenKey);
+    }
+
+    function moveTarget() {
+        const size = targetSize;
+        const gameBounds = document.getElementById("game").getBoundingClientRect();
+        const hudBottom = document.getElementById("hud").getBoundingClientRect().bottom - gameBounds.top;
+        const comboBottom = document.getElementById("combo").getBoundingClientRect().bottom - gameBounds.top;
+        const safeMargin = 16;
+        const minX = safeMargin;
+        const maxX = Math.max(minX, gameBounds.width - size - safeMargin);
+        const minY = Math.max(hudBottom, comboBottom) + 16;
+        const maxY = Math.max(minY, gameBounds.height - size - safeMargin);
+        const config = getDifficultyConfig(level);
+        const movementMultiplier = preGameDifficulties[selectedPreGameDifficulty].movementSpeedMultiplier;
+        const jitter = config.jitter * movementMultiplier;
+
+        const randomX = minX + Math.random() * (maxX - minX);
+        const randomY = minY + Math.random() * (maxY - minY);
+        const x = Math.min(maxX, Math.max(minX, randomX + (Math.random() * 2 - 1) * jitter));
+        const y = Math.min(maxY, Math.max(minY, randomY + (Math.random() * 2 - 1) * jitter));
+
+        target.style.left = x + "px";
+        target.style.top = y + "px";
+    }
+
+    function startGame() {
+        cleanupDodgeGame();
+        clearInterval(timer);
+        document.getElementById("achievementsScreen").style.display = "none";
+        document.getElementById("dailyChallengesScreen").style.display = "none";
+        document.body.classList.remove("modal-screen-active");
+        document.body.classList.add("one-button-game-active");
+        document.getElementById("hud").style.display = "";
+        document.getElementById("combo").style.display = "";
+        score = 0;
+        time = 30;
+        level = 1;
+        targetSize = 85;
+        combo = 0;
+        clearTimeout(comboTimer);
+        const comboElement = document.getElementById("combo");
+        comboElement.textContent = "COMBO x0";
+        comboElement.classList.remove("show");
+        gameRunning = true;
+        markGamePlayed("oneButton");
+        updateDailyChallengeProgress("gameStarted", "oneButton");
+
+        applyDifficulty();
+
+        scoreText.textContent = score;
+        timeText.textContent = time;
+
+        startScreen.style.display = "none";
+        difficultyScreen.style.display = "none";
+        gameSelectScreen.style.display = "none";
+        dodgeDifficultyScreen.style.display = "none";
+        dodgeGameScreen.style.display = "none";
+        dodgeGameOverScreen.style.display = "none";
+        endScreen.style.display = "none";
+
+        target.style.display = "block";
+
+        moveTarget();
+
+        timer = setInterval(() => {
+            time--;
+            timeText.textContent = time;
+
+            if (time <= 0) {
+                endGame();
+            }
+        }, 1000);
+    }
+
+    function endGame() {
+        gameRunning = false;
+        clearInterval(timer);
+        document.body.classList.remove("one-button-game-active");
+        if (score >= 25) {
+            unlockAchievement("highScorer");
+        }
+
+        target.style.display = "none";
+
+        if (score > best) {
+            best = score;
+            writeLocalStorage("oneButtonBest", best);
+            bestText.textContent = best;
+        }
+
+        finalScore.textContent = score;
+        finalBest.textContent = best;
+        finalMode.textContent = preGameDifficulties[selectedPreGameDifficulty].name;
+        endScreen.style.display = "flex";
+    }
+
+    function showDifficultySelection() {
+        cleanupDodgeGame();
+        document.getElementById("achievementsScreen").style.display = "none";
+        document.getElementById("dailyChallengesScreen").style.display = "none";
+        document.body.classList.remove("one-button-game-active");
+        document.body.classList.remove("game-select-active");
+        document.body.classList.add("modal-screen-active");
+        clearInterval(timer);
+        document.getElementById("hud").style.display = "";
+        document.getElementById("combo").style.display = "";
+        clearTimeout(comboTimer);
+        combo = 0;
+        document.getElementById("combo").textContent = "COMBO x0";
+        document.getElementById("combo").classList.remove("show");
+        gameRunning = false;
+        target.style.display = "none";
+        startScreen.style.display = "none";
+        tutorialScreen.style.display = "none";
+        gameSelectScreen.style.display = "none";
+        endScreen.style.display = "none";
+        dodgeDifficultyScreen.style.display = "none";
+        dodgeGameScreen.style.display = "none";
+        dodgeGameOverScreen.style.display = "none";
+        difficultyScreen.style.display = "flex";
+        updateDifficultySelection();
+        document.querySelector('[data-difficulty="' + selectedPreGameDifficulty + '"]').focus();
+    }
+
+    function showTutorial() {
+        cleanupDodgeGame();
+        document.getElementById("achievementsScreen").style.display = "none";
+        document.getElementById("dailyChallengesScreen").style.display = "none";
+        document.body.classList.remove("one-button-game-active");
+        document.body.classList.add("modal-screen-active");
+        clearInterval(timer);
+        document.getElementById("hud").style.display = "";
+        document.getElementById("combo").style.display = "";
+        gameRunning = false;
+        target.style.display = "none";
+        startScreen.style.display = "none";
+        gameSelectScreen.style.display = "none";
+        difficultyScreen.style.display = "none";
+        dodgeDifficultyScreen.style.display = "none";
+        dodgeGameScreen.style.display = "none";
+        dodgeGameOverScreen.style.display = "none";
+        endScreen.style.display = "none";
+        tutorialScreen.style.display = "flex";
+        tutorialContinueButton.focus();
+    }
+
+    function completeTutorial() {
+        tutorialSeen = true;
+        writeLocalStorage(tutorialSeenKey, "true");
+        showGameSelector();
+    }
+
+    function handleStartButton() {
+        if (tutorialSeen) {
+            showGameSelector();
+        } else {
+            showTutorial();
+        }
+    }
+
+    function updateDifficultySelection() {
+        document.querySelectorAll("[data-difficulty]").forEach((card) => {
+            const isSelected = card.dataset.difficulty === selectedPreGameDifficulty;
+            card.classList.toggle("selected", isSelected);
+            card.setAttribute("aria-pressed", String(isSelected));
+        });
+    }
+
+    function selectDifficulty(name) {
+        if (!preGameDifficulties[name]) return;
+        selectedPreGameDifficulty = name;
+        updateDifficultySelection();
+    }
+
+    function showGameSelector() {
+        cleanupDodgeGame();
+        document.getElementById("achievementsScreen").style.display = "none";
+        document.getElementById("dailyChallengesScreen").style.display = "none";
+        document.body.classList.remove("one-button-game-active");
+        document.body.classList.remove("modal-screen-active");
+        clearInterval(timer);
+        gameRunning = false;
+        document.body.classList.add("game-select-active");
+        document.getElementById("hud").style.display = "";
+        document.getElementById("combo").style.display = "";
+        target.style.display = "none";
+        startScreen.style.display = "none";
+        tutorialScreen.style.display = "none";
+        difficultyScreen.style.display = "none";
+        dodgeDifficultyScreen.style.display = "none";
+        dodgeGameScreen.style.display = "none";
+        dodgeGameOverScreen.style.display = "none";
+        endScreen.style.display = "none";
+        gameSelectScreen.style.display = "flex";
+        selectOneButtonGame.focus();
+    }
+
+    function showAchievementsScreen() {
+        document.body.classList.remove("game-select-active");
+        document.body.classList.add("modal-screen-active");
+        gameSelectScreen.style.display = "none";
+        document.getElementById("dailyChallengesScreen").style.display = "none";
+        document.getElementById("achievementsScreen").style.display = "flex";
+        updateAchievementUI();
+        document.getElementById("achievementsBackButton").focus();
+    }
+
+    function showDailyChallengesScreen() {
+        ensureDailyChallengeDate(new Date());
+        document.body.classList.remove("game-select-active");
+        document.body.classList.add("modal-screen-active");
+        gameSelectScreen.style.display = "none";
+        document.getElementById("achievementsScreen").style.display = "none";
+        document.getElementById("dailyChallengesScreen").style.display = "flex";
+        updateDailyChallengeUI();
+        document.getElementById("dailyChallengesBackButton").focus();
+    }
+
+    function selectGame(gameId) {
+        document.body.classList.remove("game-select-active");
+        gameSelectScreen.style.display = "none";
+        document.getElementById("achievementsScreen").style.display = "none";
+        document.getElementById("dailyChallengesScreen").style.display = "none";
+        if (gameId === "oneButton") {
+            showDifficultySelection();
+        } else if (gameId === "dodgeTheRed") {
+            showDodgeDifficulty();
+        }
+    }
+
+    function showDodgeDifficulty() {
+        cleanupDodgeGame();
+        document.getElementById("achievementsScreen").style.display = "none";
+        document.getElementById("dailyChallengesScreen").style.display = "none";
+        document.body.classList.remove("game-select-active");
+        document.body.classList.add("modal-screen-active");
+        clearInterval(timer);
+        gameRunning = false;
+        target.style.display = "none";
+        startScreen.style.display = "none";
+        tutorialScreen.style.display = "none";
+        gameSelectScreen.style.display = "none";
+        difficultyScreen.style.display = "none";
+        dodgeGameScreen.style.display = "none";
+        dodgeGameOverScreen.style.display = "none";
+        endScreen.style.display = "none";
+        dodgeDifficultyScreen.style.display = "flex";
+        updateDodgeDifficultySelection();
+        document.querySelector('[data-dodge-difficulty="' + selectedDodgeDifficulty + '"]').focus();
+    }
+
+    function updateDodgeDifficultySelection() {
+        document.querySelectorAll("[data-dodge-difficulty]").forEach((card) => {
+            const selected = card.dataset.dodgeDifficulty === selectedDodgeDifficulty;
+            card.classList.toggle("selected", selected);
+            card.setAttribute("aria-pressed", String(selected));
+        });
+    }
+
+    function selectDodgeDifficulty(name) {
+        if (!Object.prototype.hasOwnProperty.call(dodgeDifficultyConfig, name)) return;
+        selectedDodgeDifficulty = name;
+        writeLocalStorage("oneButtonChallenge_dodgeTheRed_difficulty", name);
+        updateDodgeDifficultySelection();
+    }
+
+    function resizeDodgeCanvas() {
+        const bounds = dodgeArena.getBoundingClientRect();
+        if (!bounds.width || !bounds.height) return;
+        dodgeGameState.deviceScale = Math.min(window.devicePixelRatio || 1, 2);
+        dodgeCanvas.width = Math.round(bounds.width * dodgeGameState.deviceScale);
+        dodgeCanvas.height = Math.round(bounds.height * dodgeGameState.deviceScale);
+        dodgeContext.setTransform(dodgeGameState.deviceScale, 0, 0, dodgeGameState.deviceScale, 0, 0);
+
+        const state = dodgeGameState;
+        if (state.player.x) {
+            state.player.x = Math.max(state.player.radius, Math.min(bounds.width - state.player.radius, state.player.x));
+            state.player.y = Math.max(state.player.radius, Math.min(bounds.height - state.player.radius, state.player.y));
+        }
+    }
+
+    function dodgeArenaSize() {
+        const bounds = dodgeArena.getBoundingClientRect();
+        return { width: bounds.width, height: bounds.height };
+    }
+
+    function spawnDodgeObstacle() {
+        const state = dodgeGameState;
+        const { width, height } = dodgeArenaSize();
+        if (width < 80 || height < 80) return;
+
+        const player = state.player;
+        const radius = 10 + Math.random() * 6;
+        const edge = Math.floor(Math.random() * 4);
+        let x;
+        let y;
+        let attempts = 0;
+        do {
+            if (edge === 0) { x = radius; y = radius + Math.random() * (height - radius * 2); }
+            else if (edge === 1) { x = width - radius; y = radius + Math.random() * (height - radius * 2); }
+            else if (edge === 2) { x = radius + Math.random() * (width - radius * 2); y = radius; }
+            else { x = radius + Math.random() * (width - radius * 2); y = height - radius; }
+            attempts++;
+        } while (Math.hypot(x - player.x, y - player.y) < Math.min(150, Math.min(width, height) * 0.42) && attempts < 12);
+
+        const direction = Math.atan2(player.y - y, player.x - x);
+        const speed = dodgeDifficultyConfig[selectedDodgeDifficulty].obstacleSpeed;
+        state.obstacles.push({
+            x, y, radius, rotation: Math.random() * Math.PI,
+            vx: Math.cos(direction) * speed,
+            vy: Math.sin(direction) * speed,
+            turn: (Math.random() - 0.5) * 0.6
+        });
+    }
+
+    function spawnDodgePowerUp() {
+        const state = dodgeGameState;
+        const { width, height } = dodgeArenaSize();
+        if (width < 80 || height < 80 || state.powerUps.length) return;
+        const types = ["SHIELD", "SPEED", "BONUS"];
+        const type = types[Math.floor(Math.random() * types.length)];
+        let x;
+        let y;
+        let attempts = 0;
+        do {
+            x = 28 + Math.random() * Math.max(1, width - 56);
+            y = 28 + Math.random() * Math.max(1, height - 56);
+            attempts++;
+        } while (Math.hypot(x - state.player.x, y - state.player.y) < 110 && attempts < 16);
+        state.powerUps.push({ x, y, radius: 13, type, age: 0, life: 12 });
+    }
+
+    function addDodgeParticles(x, y, color, count) {
+        const state = dodgeGameState;
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 45 + Math.random() * 130;
+            state.particles.push({
+                x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                age: 0, life: 0.35 + Math.random() * 0.35, color, radius: 2 + Math.random() * 3
+            });
+        }
+        if (state.particles.length > 140) state.particles.splice(0, state.particles.length - 140);
+    }
+
+    function updateDodgeHUD() {
+        const state = dodgeGameState;
+        document.getElementById("dodgeScore").textContent = Math.floor(state.score);
+        document.getElementById("dodgeTime").textContent = state.elapsed.toFixed(1);
+        document.getElementById("dodgeLives").textContent = "♥".repeat(Math.max(0, state.lives)) + "♡".repeat(3 - Math.max(0, state.lives));
+        document.getElementById("dodgeMode").textContent = selectedDodgeDifficulty;
+    }
+
+    function startDodgeGame() {
+        cleanupDodgeGame();
+        document.getElementById("achievementsScreen").style.display = "none";
+        document.getElementById("dailyChallengesScreen").style.display = "none";
+        document.body.classList.remove("one-button-game-active");
+        document.body.classList.remove("modal-screen-active");
+        clearInterval(timer);
+        gameRunning = false;
+        document.getElementById("hud").style.display = "none";
+        document.getElementById("combo").style.display = "none";
+        target.style.display = "none";
+        document.body.classList.add("dodge-game-active");
+        dodgeDifficultyScreen.style.display = "none";
+        gameSelectScreen.style.display = "none";
+        startScreen.style.display = "none";
+        tutorialScreen.style.display = "none";
+        difficultyScreen.style.display = "none";
+        endScreen.style.display = "none";
+
+        const state = dodgeGameState;
+        const config = dodgeDifficultyConfig[selectedDodgeDifficulty];
+        markGamePlayed("dodgeTheRed");
+        state.running = true;
+        state.paused = false;
+        state.elapsed = 0;
+        state.dailyReportedSecond = 0;
+        state.score = 0;
+        state.lives = 3;
+        state.obstacles = [];
+        state.powerUps = [];
+        state.particles = [];
+        state.keys.clear();
+        state.touch.x = 0;
+        state.touch.y = 0;
+        state.touch.pointerId = null;
+        state.spawnElapsed = 0;
+        state.nextPowerUpAt = state.elapsed + 12 + Math.random() * 6;
+        state.hudElapsed = 0;
+        state.invulnerableUntil = 0;
+        state.shieldUntil = 0;
+        state.speedUntil = 0;
+        state.bonusUntil = 0;
+        state.hitFlashUntil = 0;
+        state.scorePopUntil = 0;
+        state.scorePopText = "";
+        state.lastPowerUpType = "";
+        dodgeArena.classList.remove("paused");
+        state.player.x = 0;
+        state.player.y = 0;
+        dodgeGameOverScreen.style.display = "none";
+        dodgePauseOverlay.style.display = "none";
+        dodgeGameScreen.style.display = "block";
+        resizeDodgeCanvas();
+        const size = dodgeArenaSize();
+        state.player.x = size.width / 2;
+        state.player.y = size.height / 2;
+        updateDodgeHUD();
+        updateDailyChallengeProgress("gameStarted", "dodgeTheRed");
+
+        for (let i = 0; i < config.startingObstacles; i++) spawnDodgeObstacle();
+        state.lastFrameTime = performance.now();
+        state.animationFrame = requestAnimationFrame(dodgeGameLoop);
+        document.getElementById("dodgePauseButton").focus();
+    }
+
+    function dodgeGameLoop(timestamp) {
+        const state = dodgeGameState;
+        if (!state.running || state.paused) return;
+        const deltaTime = Math.max(0, Math.min((timestamp - state.lastFrameTime) / 1000 || 0, 0.05));
+        state.lastFrameTime = timestamp;
+        updateDodgeGame(deltaTime);
+        if (!state.running) return;
+        drawDodgeGame();
+        state.animationFrame = requestAnimationFrame(dodgeGameLoop);
+    }
+
+    function updateDodgeGame(deltaTime) {
+        const state = dodgeGameState;
+        const config = dodgeDifficultyConfig[selectedDodgeDifficulty];
+        const size = dodgeArenaSize();
+        state.elapsed += deltaTime;
+
+        const activeSpeed = state.elapsed < state.speedUntil ? 1.45 : 1;
+        const inputX = (state.keys.has("ArrowRight") || state.keys.has("d") || state.keys.has("D") ? 1 : 0)
+            - (state.keys.has("ArrowLeft") || state.keys.has("a") || state.keys.has("A") ? 1 : 0) + state.touch.x;
+        const inputY = (state.keys.has("ArrowDown") || state.keys.has("s") || state.keys.has("S") ? 1 : 0)
+            - (state.keys.has("ArrowUp") || state.keys.has("w") || state.keys.has("W") ? 1 : 0) + state.touch.y;
+        const inputLength = Math.hypot(inputX, inputY);
+        if (inputLength > 0) {
+            const speed = config.playerSpeed * activeSpeed;
+            state.player.x += inputX / Math.max(1, inputLength) * speed * deltaTime;
+            state.player.y += inputY / Math.max(1, inputLength) * speed * deltaTime;
+        }
+        state.player.x = Math.max(state.player.radius, Math.min(size.width - state.player.radius, state.player.x));
+        state.player.y = Math.max(state.player.radius, Math.min(size.height - state.player.radius, state.player.y));
+
+        const speedScale = Math.min(1.8, 1 + Math.floor(state.elapsed / 10) * 0.08);
+        const previousWholeScore = Math.floor(state.score);
+        state.score += deltaTime * config.scoreMultiplier * (state.elapsed < state.bonusUntil ? 2 : 1);
+        const currentWholeScore = Math.floor(state.score);
+        if (currentWholeScore > previousWholeScore) {
+            state.scorePopText = "+" + (currentWholeScore - previousWholeScore);
+            state.scorePopUntil = state.elapsed + 0.35;
+            updateDailyChallengeProgress("dodgeScore", currentWholeScore);
+        }
+        if (previousWholeScore < 100 && state.score >= 100) {
+            unlockAchievement("dodgeMaster");
+        }
+
+        state.spawnElapsed += deltaTime;
+        const spawnInterval = Math.max(0.48, config.spawnInterval - Math.floor(state.elapsed / 10) * 0.055);
+        const obstacleCap = Math.min(config.maxObstacles + 2, config.maxObstacles + Math.floor(state.elapsed / 20));
+        if (state.spawnElapsed >= spawnInterval) {
+            state.spawnElapsed = 0;
+            if (state.obstacles.length < obstacleCap) spawnDodgeObstacle();
+        }
+
+        state.obstacles.forEach((obstacle) => {
+            const dx = state.player.x - obstacle.x;
+            const dy = state.player.y - obstacle.y;
+            const distance = Math.max(1, Math.hypot(dx, dy));
+            const speed = Math.hypot(obstacle.vx, obstacle.vy);
+            const desiredX = dx / distance * speed;
+            const desiredY = dy / distance * speed;
+            obstacle.vx += (desiredX - obstacle.vx) * Math.min(0.12 * deltaTime, 0.008);
+            obstacle.vy += (desiredY - obstacle.vy) * Math.min(0.12 * deltaTime, 0.008);
+            obstacle.x += obstacle.vx * speedScale * deltaTime;
+            obstacle.y += obstacle.vy * speedScale * deltaTime;
+            obstacle.rotation += deltaTime * 1.2;
+
+            if (obstacle.x < obstacle.radius || obstacle.x > size.width - obstacle.radius) obstacle.vx *= -1;
+            if (obstacle.y < obstacle.radius || obstacle.y > size.height - obstacle.radius) obstacle.vy *= -1;
+            obstacle.x = Math.max(obstacle.radius, Math.min(size.width - obstacle.radius, obstacle.x));
+            obstacle.y = Math.max(obstacle.radius, Math.min(size.height - obstacle.radius, obstacle.y));
+        });
+
+        if (state.elapsed >= state.nextPowerUpAt && !state.powerUps.length) {
+            spawnDodgePowerUp();
+            state.nextPowerUpAt = state.elapsed + 12 + Math.random() * 6;
+        }
+
+        updateDodgePowerUps(deltaTime);
+        checkDodgeCollisions();
+        if (state.running) {
+            const elapsedSecond = Math.floor(state.elapsed);
+            if (elapsedSecond > state.dailyReportedSecond) {
+                state.dailyReportedSecond = elapsedSecond;
+                updateDailyChallengeProgress("dodgeElapsed", { elapsed: state.elapsed, lives: state.lives });
+            }
+            if (state.elapsed >= 30) unlockAchievement("survivor");
+            if (state.elapsed >= 15 && state.lives === 3) unlockAchievement("threeLives");
+        }
+        state.particles = state.particles.filter((particle) => {
+            particle.age += deltaTime;
+            particle.x += particle.vx * deltaTime;
+            particle.y += particle.vy * deltaTime;
+            return particle.age < particle.life;
+        });
+
+        state.hudElapsed += deltaTime;
+        if (state.hudElapsed >= 0.1) {
+            state.hudElapsed = 0;
+            updateDodgeHUD();
+        }
+    }
+
+    function updateDodgePowerUps(deltaTime) {
+        const state = dodgeGameState;
+        state.powerUps.forEach((powerUp) => {
+            powerUp.age += deltaTime;
+            powerUp.life -= deltaTime;
+        });
+        state.powerUps = state.powerUps.filter((powerUp) => powerUp.life > 0);
+    }
+
+    function checkDodgeCollisions() {
+        const state = dodgeGameState;
+        const player = state.player;
+        for (const obstacle of state.obstacles) {
+            if (Math.hypot(player.x - obstacle.x, player.y - obstacle.y) >= player.radius + obstacle.radius) continue;
+            if (state.elapsed < state.invulnerableUntil) break;
+
+            addDodgeParticles(player.x, player.y, state.shieldUntil > state.elapsed ? "#00eaff" : "#ff4057", 14);
+            if (state.shieldUntil > state.elapsed) {
+                state.shieldUntil = 0;
+                state.invulnerableUntil = state.elapsed + 0.8;
+                playDodgeTone(880, 440, 0.22, "sine", 0.16);
+            } else {
+                state.lives--;
+                state.invulnerableUntil = state.elapsed + 0.9;
+                state.hitFlashUntil = state.elapsed + 0.18;
+                playDodgeTone(240, 95, 0.24, "sawtooth", 0.12);
+                playDodgeTone(180, 70, 0.3, "triangle", 0.1);
+                if (state.lives <= 0) {
+                    endDodgeGame();
+                    return;
+                }
+            }
+            break;
+        }
+
+        for (let index = state.powerUps.length - 1; index >= 0; index--) {
+            const powerUp = state.powerUps[index];
+            if (Math.hypot(player.x - powerUp.x, player.y - powerUp.y) > player.radius + powerUp.radius + 3) continue;
+            state.powerUps.splice(index, 1);
+            state.lastPowerUpType = powerUp.type;
+            unlockAchievement("powerHunter");
+            updateDailyChallengeProgress("dodgePowerUp", 1);
+            addDodgeParticles(powerUp.x, powerUp.y, powerUp.type === "SHIELD" ? "#00eaff" : powerUp.type === "SPEED" ? "#ffe66d" : "#bb72ff", 16);
+            playDodgeTone(660, 990, 0.16, "sine", 0.12);
+            if (powerUp.type === "SHIELD") {
+                state.shieldUntil = state.elapsed + 8;
+                playDodgeTone(520, 1040, 0.2, "triangle", 0.12);
+            } else if (powerUp.type === "SPEED") {
+                state.speedUntil = state.elapsed + 5;
+            } else {
+                state.bonusUntil = state.elapsed + 5;
+                playDodgeTone(740, 1180, 0.18, "sine", 0.11);
+            }
+            break;
+        }
+    }
+
+    function drawDodgeGame() {
+        const state = dodgeGameState;
+        const { width, height } = dodgeArenaSize();
+        dodgeContext.clearRect(0, 0, width, height);
+
+        state.particles.forEach((particle) => {
+            dodgeContext.globalAlpha = Math.max(0, 1 - particle.age / particle.life);
+            dodgeContext.fillStyle = particle.color;
+            dodgeContext.shadowBlur = 12;
+            dodgeContext.shadowColor = particle.color;
+            dodgeContext.beginPath();
+            dodgeContext.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+            dodgeContext.fill();
+        });
+        dodgeContext.globalAlpha = 1;
+        dodgeContext.shadowBlur = 0;
+
+        state.powerUps.forEach((powerUp) => {
+            const color = powerUp.type === "SHIELD" ? "#00eaff" : powerUp.type === "SPEED" ? "#ffe66d" : "#bb72ff";
+            const pulse = 1 + Math.sin(powerUp.age * 6) * 0.08;
+            dodgeContext.save();
+            dodgeContext.translate(powerUp.x, powerUp.y);
+            dodgeContext.scale(pulse, pulse);
+            dodgeContext.shadowBlur = 18;
+            dodgeContext.shadowColor = color;
+            dodgeContext.fillStyle = color;
+            dodgeContext.beginPath();
+            dodgeContext.arc(0, 0, powerUp.radius, 0, Math.PI * 2);
+            dodgeContext.fill();
+            dodgeContext.fillStyle = "#090b18";
+            dodgeContext.font = "bold 13px Arial";
+            dodgeContext.textAlign = "center";
+            dodgeContext.textBaseline = "middle";
+            dodgeContext.fillText(powerUp.type === "SHIELD" ? "S" : powerUp.type === "SPEED" ? "⚡" : "+", 0, 1);
+            dodgeContext.restore();
+        });
+
+        state.obstacles.forEach((obstacle) => {
+            dodgeContext.save();
+            dodgeContext.translate(obstacle.x, obstacle.y);
+            dodgeContext.rotate(obstacle.rotation);
+            dodgeContext.shadowBlur = 18;
+            dodgeContext.shadowColor = "#ff304f";
+            dodgeContext.fillStyle = "#ff334f";
+            dodgeContext.beginPath();
+            dodgeContext.moveTo(0, -obstacle.radius * 1.3);
+            dodgeContext.lineTo(obstacle.radius * 1.1, 0);
+            dodgeContext.lineTo(0, obstacle.radius * 1.3);
+            dodgeContext.lineTo(-obstacle.radius * 1.1, 0);
+            dodgeContext.closePath();
+            dodgeContext.fill();
+            dodgeContext.restore();
+        });
+
+        const visible = state.elapsed >= state.invulnerableUntil || Math.floor(state.elapsed * 14) % 2 === 0;
+        if (visible) {
+            dodgeContext.save();
+            dodgeContext.translate(state.player.x, state.player.y);
+            if (state.shieldUntil > state.elapsed) {
+                dodgeContext.strokeStyle = "rgba(0, 234, 255, 0.9)";
+                dodgeContext.lineWidth = 3;
+                dodgeContext.shadowBlur = 20;
+                dodgeContext.shadowColor = "#00eaff";
+                dodgeContext.beginPath();
+                dodgeContext.arc(0, 0, state.player.radius + 8, 0, Math.PI * 2);
+                dodgeContext.stroke();
+            }
+            dodgeContext.shadowBlur = 22;
+            dodgeContext.shadowColor = state.elapsed < state.hitFlashUntil ? "#ff4057" : "#00eaff";
+            dodgeContext.fillStyle = state.elapsed < state.hitFlashUntil ? "#ff7180" : "#b8fbff";
+            dodgeContext.beginPath();
+            dodgeContext.arc(0, 0, state.player.radius, 0, Math.PI * 2);
+            dodgeContext.fill();
+            dodgeContext.restore();
+        }
+        if (state.elapsed < state.scorePopUntil) {
+            dodgeContext.save();
+            dodgeContext.globalAlpha = Math.min(1, (state.scorePopUntil - state.elapsed) / 0.2);
+            dodgeContext.fillStyle = "#ffffff";
+            dodgeContext.font = "bold 14px Arial";
+            dodgeContext.textAlign = "center";
+            dodgeContext.shadowBlur = 10;
+            dodgeContext.shadowColor = "#00eaff";
+            dodgeContext.fillText(state.scorePopText, state.player.x, state.player.y - 25 - (0.35 - (state.scorePopUntil - state.elapsed)) * 18);
+            dodgeContext.restore();
+        }
+        dodgeContext.globalAlpha = 1;
+    }
+
+    function pauseDodgeGame() {
+        const state = dodgeGameState;
+        if (!state.running || state.paused) return;
+        state.paused = true;
+        cancelAnimationFrame(state.animationFrame);
+        state.animationFrame = 0;
+        state.keys.clear();
+        state.touch.x = 0;
+        state.touch.y = 0;
+        state.touch.pointerId = null;
+        dodgeJoystickKnob.style.transform = "";
+        dodgeArena.classList.add("paused");
+        dodgePauseOverlay.style.display = "flex";
+        document.getElementById("dodgeResumeButton").focus();
+    }
+
+    function resumeDodgeGame() {
+        const state = dodgeGameState;
+        if (!state.running || !state.paused) return;
+        state.paused = false;
+        dodgeArena.classList.remove("paused");
+        dodgePauseOverlay.style.display = "none";
+        state.lastFrameTime = performance.now();
+        state.animationFrame = requestAnimationFrame(dodgeGameLoop);
+        document.getElementById("dodgePauseButton").focus();
+    }
+
+    function endDodgeGame() {
+        const state = dodgeGameState;
+        if (!state.running) return;
+        state.running = false;
+        state.paused = false;
+        cancelAnimationFrame(state.animationFrame);
+        state.animationFrame = 0;
+        state.keys.clear();
+        state.touch.x = 0;
+        state.touch.y = 0;
+        state.touch.pointerId = null;
+        dodgeArena.classList.add("paused");
+        updateDodgeHUD();
+
+        if (Math.floor(state.score) > state.best) {
+            state.best = Math.floor(state.score);
+            writeLocalStorage("oneButtonChallenge_dodgeTheRed_best", String(state.best));
+        }
+
+        document.getElementById("dodgeFinalTime").textContent = state.elapsed.toFixed(1) + "s";
+        document.getElementById("dodgeFinalScore").textContent = Math.floor(state.score);
+        document.getElementById("dodgeFinalBest").textContent = state.best;
+        dodgePauseOverlay.style.display = "none";
+        dodgeGameOverScreen.style.display = "flex";
+        playDodgeTone(360, 120, 0.45, "triangle", 0.14);
+        document.getElementById("dodgePlayAgainButton").focus();
+    }
+
+    function cleanupDodgeGame() {
+        const state = dodgeGameState;
+        state.running = false;
+        state.paused = false;
+        if (state.animationFrame) cancelAnimationFrame(state.animationFrame);
+        state.animationFrame = 0;
+        state.keys.clear();
+        state.touch.x = 0;
+        state.touch.y = 0;
+        state.touch.pointerId = null;
+        dodgeArena.classList.remove("paused");
+        state.obstacles = [];
+        state.powerUps = [];
+        state.particles = [];
+        dodgePauseOverlay.style.display = "none";
+        dodgeGameOverScreen.style.display = "none";
+        dodgeGameScreen.style.display = "none";
+        document.body.classList.remove("dodge-game-active");
+        dodgeJoystickKnob.style.transform = "";
+    }
+
+    function setDodgeTouchInput(event) {
+        const bounds = dodgeJoystick.getBoundingClientRect();
+        const centerX = bounds.left + bounds.width / 2;
+        const centerY = bounds.top + bounds.height / 2;
+        const maxDistance = bounds.width * 0.34;
+        const dx = event.clientX - centerX;
+        const dy = event.clientY - centerY;
+        const distance = Math.min(maxDistance, Math.hypot(dx, dy));
+        const angle = Math.atan2(dy, dx);
+        const x = Math.cos(angle) * distance;
+        const y = Math.sin(angle) * distance;
+        dodgeGameState.touch.x = x / maxDistance;
+        dodgeGameState.touch.y = y / maxDistance;
+        dodgeJoystickKnob.style.transform = "translate(" + x + "px, " + y + "px)";
+    }
+
+    target.addEventListener("click", () => {
+        if (!gameRunning) return;
+
+        score++;
+        combo++;
+        updateDailyChallengeProgress("oneButtonHit", { score, combo });
+        recordOneButtonHit();
+        if (combo >= 10) unlockAchievement("comboMaster");
+
+        scoreText.textContent = score;
+
+        playTone(620, 310, 0.09, "sine", 0.12);
+        animateTargetHit();
+        showHitEffect();
+        showHitParticles();
+        showCombo();
+
+        clearTimeout(comboTimer);
+
+        comboTimer = setTimeout(() => {
+            combo = 0;
+            document.getElementById("combo").classList.remove("show");
+        }, 1200);
+
+        if (score % 5 === 0) {
+            level++;
+            applyDifficulty();
+            playTone(520, 1040, 0.28, "triangle", 0.16);
+            showLevelUpEffect(level, getDifficultyConfig(level).name);
+            if (level >= 5) unlockAchievement("levelFive");
+            if (level >= 6) unlockAchievement("endless");
+            updateDailyChallengeProgress("oneButtonLevel", level);
+        }
+
+        moveTarget();
+    });
+
+    startButton.addEventListener("click", handleStartButton);
+    tutorialContinueButton.addEventListener("click", completeTutorial);
+    skipTutorialButton.addEventListener("click", completeTutorial);
+    startGameButton.addEventListener("click", startGame);
+    restartButton.addEventListener("click", showDifficultySelection);
+
+    document.querySelectorAll("[data-difficulty]").forEach((card, index, cards) => {
+        card.addEventListener("click", () => selectDifficulty(card.dataset.difficulty));
+        card.addEventListener("keydown", (event) => {
+            const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1
+                : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1
+                : 0;
+            if (!direction) return;
+            event.preventDefault();
+            const nextIndex = (index + direction + cards.length) % cards.length;
+            cards[nextIndex].focus();
+            selectDifficulty(cards[nextIndex].dataset.difficulty);
+        });
+    });
+
+    document.querySelectorAll("[data-dodge-difficulty]").forEach((card, index, cards) => {
+        card.addEventListener("click", () => {
+            playDodgeTone(520, 660, 0.06, "sine", 0.03);
+            selectDodgeDifficulty(card.dataset.dodgeDifficulty);
+        });
+        card.addEventListener("keydown", (event) => {
+            const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1
+                : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1
+                : 0;
+            if (!direction) return;
+            event.preventDefault();
+            const nextIndex = (index + direction + cards.length) % cards.length;
+            cards[nextIndex].focus();
+            selectDodgeDifficulty(cards[nextIndex].dataset.dodgeDifficulty);
+        });
+    });
+
+    selectOneButtonGame.addEventListener("click", () => { playDodgeTone(520, 700, 0.07, "sine", 0.035); selectGame("oneButton"); });
+    selectDodgeGame.addEventListener("click", () => { playDodgeTone(520, 700, 0.07, "sine", 0.035); selectGame("dodgeTheRed"); });
+    document.getElementById("showAchievementsButton").addEventListener("click", showAchievementsScreen);
+    document.getElementById("achievementsBackButton").addEventListener("click", showGameSelector);
+    document.getElementById("showDailyChallengesButton").addEventListener("click", showDailyChallengesScreen);
+    document.getElementById("dailyChallengesBackButton").addEventListener("click", showGameSelector);
+    document.getElementById("oneButtonBackToGames").addEventListener("click", showGameSelector);
+    document.getElementById("dodgeBackToGames").addEventListener("click", showGameSelector);
+    startDodgeGameButton.addEventListener("click", () => { playDodgeTone(620, 820, 0.08, "sine", 0.045); startDodgeGame(); });
+    document.getElementById("dodgePauseButton").addEventListener("click", () => { playDodgeTone(480, 360, 0.08, "sine", 0.04); pauseDodgeGame(); });
+    document.getElementById("dodgeResumeButton").addEventListener("click", () => { playDodgeTone(420, 620, 0.08, "sine", 0.04); resumeDodgeGame(); });
+    document.getElementById("dodgeRestartButton").addEventListener("click", showDodgeDifficulty);
+    document.getElementById("dodgeQuitButton").addEventListener("click", showGameSelector);
+    document.getElementById("dodgePlayAgainButton").addEventListener("click", showDodgeDifficulty);
+    document.getElementById("dodgeGameOverBackButton").addEventListener("click", showGameSelector);
+    document.querySelectorAll(".sound-toggle").forEach((button) => {
+        button.addEventListener("click", toggleSound);
+    });
+    updateSoundUI();
+    renderAchievementCards();
+    initializeDailyChallenges();
+
+    dodgeJoystick.addEventListener("pointerdown", (event) => {
+        if (!dodgeGameState.running || dodgeGameState.paused) return;
+        event.preventDefault();
+        dodgeGameState.touch.pointerId = event.pointerId;
+        dodgeJoystick.setPointerCapture(event.pointerId);
+        setDodgeTouchInput(event);
+    });
+    dodgeJoystick.addEventListener("pointermove", (event) => {
+        if (dodgeGameState.touch.pointerId !== event.pointerId) return;
+        event.preventDefault();
+        setDodgeTouchInput(event);
+    });
+    const releaseDodgeTouch = (event) => {
+        if (dodgeGameState.touch.pointerId !== event.pointerId) return;
+        dodgeGameState.touch.pointerId = null;
+        dodgeGameState.touch.x = 0;
+        dodgeGameState.touch.y = 0;
+        dodgeJoystickKnob.style.transform = "";
+    };
+    dodgeJoystick.addEventListener("pointerup", releaseDodgeTouch);
+    dodgeJoystick.addEventListener("pointercancel", releaseDodgeTouch);
+
+    document.addEventListener("keydown", (event) => {
+        const activeTag = document.activeElement && document.activeElement.tagName;
+        const typing = activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT" || document.activeElement?.isContentEditable;
+
+        if (tutorialScreen.style.display === "flex" && event.key === "Escape") {
+            event.preventDefault();
+            completeTutorial();
+            return;
+        }
+
+        if (tutorialScreen.style.display === "flex" && event.key === "Tab") {
+            const tutorialButtons = [tutorialContinueButton, skipTutorialButton];
+            const activeIndex = tutorialButtons.indexOf(document.activeElement);
+            const nextIndex = event.shiftKey
+                ? (activeIndex <= 0 ? tutorialButtons.length - 1 : activeIndex - 1)
+                : (activeIndex === tutorialButtons.length - 1 ? 0 : activeIndex + 1);
+
+            if (activeIndex === -1 || (event.shiftKey && activeIndex === 0) || (!event.shiftKey && activeIndex === tutorialButtons.length - 1)) {
+                event.preventDefault();
+                tutorialButtons[nextIndex].focus();
+            }
+            return;
+        }
+
+        if (dodgeGameScreen.style.display === "block" && !typing) {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                if (dodgeGameState.paused) resumeDodgeGame();
+                else pauseDodgeGame();
+                return;
+            }
+            if (!dodgeGameState.running || dodgeGameState.paused) return;
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D"].includes(event.key)) {
+                dodgeGameState.keys.add(event.key);
+                if (event.key.startsWith("Arrow")) event.preventDefault();
+            }
+        }
+    });
+
+    document.addEventListener("keyup", (event) => {
+        dodgeGameState.keys.delete(event.key);
+    });
+
+    window.addEventListener("blur", () => {
+        dodgeGameState.keys.clear();
+        dodgeGameState.touch.x = 0;
+        dodgeGameState.touch.y = 0;
+        dodgeGameState.touch.pointerId = null;
+        dodgeJoystickKnob.style.transform = "";
+    });
+
+    window.addEventListener("resize", () => {
+        if (dodgeGameScreen.style.display === "block") resizeDodgeCanvas();
+    });
+
+    window.addEventListener("focus", () => {
+        ensureDailyChallengeDate(new Date());
+    });
+
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+            ensureDailyChallengeDate(new Date());
+        }
+        if (document.hidden && dodgeGameState.running && !dodgeGameState.paused) pauseDodgeGame();
+    });
+
+    target.style.display = "none";
+
+    function showHitEffect() {
+        const effect = document.createElement("div");
+
+        effect.className = "hit-effect";
+        effect.textContent = "+1";
+
+        const rect = target.getBoundingClientRect();
+
+        effect.style.left = rect.left + rect.width / 2 + "px";
+        effect.style.top = rect.top + "px";
+
+        document.getElementById("game").appendChild(effect);
+
+        setTimeout(() => {
+            effect.remove();
+        }, 500);
+    }
+
+    function animateTargetHit() {
+        clearTimeout(hitAnimationTimer);
+        target.classList.remove("hit-animate");
+        void target.offsetWidth;
+        target.classList.add("hit-animate");
+        hitAnimationTimer = setTimeout(() => {
+            target.classList.remove("hit-animate");
+        }, 180);
+    }
+
+    function showHitParticles() {
+        const game = document.getElementById("game");
+        const gameRect = game.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const centerX = targetRect.left - gameRect.left + targetRect.width / 2;
+        const centerY = targetRect.top - gameRect.top + targetRect.height / 2;
+        const particleCount = 8;
+
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 * i) / particleCount;
+            const distance = 24 + Math.random() * 18;
+            const particle = document.createElement("span");
+            particle.className = "hit-particle";
+            particle.style.left = centerX + "px";
+            particle.style.top = centerY + "px";
+            particle.style.setProperty("--particle-x", Math.cos(angle) * distance + "px");
+            particle.style.setProperty("--particle-y", Math.sin(angle) * distance + "px");
+            game.appendChild(particle);
+
+            setTimeout(() => {
+                particle.remove();
+            }, 500);
+        }
+    }
+
+    function showLevelUpEffect(newLevel, difficultyName) {
+        document.querySelectorAll(".level-up-effect").forEach((existingEffect) => {
+            existingEffect.remove();
+        });
+
+        const effect = document.createElement("div");
+        effect.className = "level-up-effect";
+        effect.textContent = "LEVEL UP!";
+        const details = document.createElement("span");
+        details.textContent = "LEVEL " + newLevel + " \u2014 " + difficultyName;
+        effect.appendChild(details);
+        document.getElementById("game").appendChild(effect);
+
+        setTimeout(() => {
+            effect.remove();
+        }, 1200);
+    }
+
+    function showCombo() {
+        const comboElement = document.getElementById("combo");
+
+        comboElement.textContent = "COMBO x" + combo;
+        comboElement.classList.add("show");
+
+        clearTimeout(comboTimer);
+
+        comboTimer = setTimeout(() => {
+            comboElement.classList.remove("show");
+        }, 1000);
+    }
+</script>
+
+</body>
+</html>
